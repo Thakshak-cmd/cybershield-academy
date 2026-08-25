@@ -1,0 +1,145 @@
+.screen {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loading { padding: 48px; text-align: center; }
+
+/* ---------- ticket ---------- */
+
+.ticket { display: flex; gap: 16px; align-items: flex-start; }
+
+.portrait { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 0 0 auto; }
+.portrait__frame {
+  width: 56px; height: 56px;
+  display: grid; place-items: center;
+  border: 2px solid var(--window-edge);
+  background: var(--surface-2);
+  color: var(--window-title);
+  font-size: 20px; font-weight: 700;
+}
+.portrait__name { max-width: 76px; text-align: center; line-height: 1.4; }
+
+.ticket__text { min-width: 0; }
+.ticket__title {
+  margin: 0 0 6px;
+  font-family: var(--f-read);
+  font-size: 19px; font-weight: 600;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.ticket__brief { margin: 0 0 8px; color: var(--ink-2); max-width: 68ch; }
+.ticket__file { color: var(--muted); }
+
+/* ---------- layout ---------- */
+
+.stage { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); gap: 16px; align-items: start; }
+.stage__main, .stage__side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (max-width: 960px) { .stage { grid-template-columns: 1fr; } }
+
+/* ---------- code ---------- */
+
+.code {
+  margin: 0;
+  font-family: var(--f-code);
+  font-size: 12.5px;
+  line-height: 1.7;
+  background: var(--code-bg);
+  color: var(--ink-2);
+  overflow-x: auto;
+  padding: 10px 0;
+}
+.code__line { display: flex; }
+.code__num {
+  flex: 0 0 40px;
+  text-align: right;
+  padding-right: 12px;
+  color: var(--muted);
+  background: var(--code-gutter);
+  user-select: none;
+  font-size: 11.5px;
+}
+.code__text { padding-left: 12px; white-space: pre; }
+
+.editor {
+  display: block;
+  width: 100%;
+  min-height: 190px;
+  resize: vertical;
+  border: 0;
+  padding: 12px 14px;
+  background: var(--code-bg);
+  color: var(--ink);
+  font-family: var(--f-code);
+  font-size: 12.5px;
+  line-height: 1.7;
+  tab-size: 2;
+}
+.editor:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* ---------- suites ---------- */
+
+.suite { display: flex; align-items: center; gap: 10px; }
+.suite__count { font-size: 13px; color: var(--ink-2); }
+
+.rules { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rule { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.5; }
+.rule__mark { flex: 0 0 12px; font-size: 12px; line-height: 1.5; }
+.rule--pass .rule__mark { color: var(--secure); }
+.rule--fail .rule__mark { color: var(--breach); }
+.rule__id { font-family: var(--f-code); font-size: 11.5px; color: var(--ink-2); word-break: break-all; }
+.rule__why { display: block; margin-top: 3px; color: var(--breach); font-size: 12px; }
+
+/* ---------- commands ---------- */
+
+.commands { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.cmd {
+  width: 100%;
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+}
+.cmd__caret { color: transparent; transition: color .12s ease; }
+.cmd:hover:not(:disabled), .cmd:focus-visible {
+  background: var(--accent-soft);
+  border-color: var(--window-inner);
+}
+.cmd:hover:not(:disabled) .cmd__caret, .cmd:focus-visible .cmd__caret { color: var(--accent); }
+.cmd:disabled { opacity: .45; cursor: not-allowed; }
+.cmd--primary { color: var(--window-title); }
+.cmd__note { margin-left: auto; }
+
+.error { margin: 10px 0 0; color: var(--breach); font-size: 13px; }
+
+/* ---------- field notes ---------- */
+
+.reason { display: block; margin: 0 0 12px; color: var(--ink-2); line-height: 1.6; }
+
+.mastery { display: flex; align-items: center; gap: 9px; }
+.mastery__track {
+  display: block; flex: 1; height: 10px;
+  background: var(--pip-empty);
+  border: 1px solid var(--window-inner);
+}
+.mastery__fill {
+  display: block; height: 100%;
+  background: var(--secure);
+  transition: width .8s cubic-bezier(.22,.61,.36,1);
+}
+.mastery__val { font-size: 12px; color: var(--ink-2); }
+
+.hints { margin: 14px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.hints li { font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+
+.verdict { margin: 0; color: var(--ink-2); max-width: 74ch; }

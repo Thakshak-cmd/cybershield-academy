@@ -48,3 +48,4 @@ npm-debug.log*
 services/ml/.pytest_cache/
 services/ml/.venv/
 .mongodb-binaries/
+apps/web/dist/

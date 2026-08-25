@@ -1,0 +1,155 @@
+/*
+  Two palettes, built out so the choice can be made from the real screen rather
+  than a description.
+
+  Contrast was measured rather than eyeballed. Both palettes originally used a
+  muted grey for the small uppercase labels that came in at 3.8:1 -- below the
+  4.5:1 WCAG AA needs for text at 10.5px. Everything else cleared comfortably;
+  those two values were raised until they did too. This is an educational product
+  and accessibility is part of the LO3 discussion, so the check belongs in the
+  build rather than in a limitations paragraph.
+
+  Each commits to a single look rather than shipping light and dark variants.
+  A game world has a time of day; Nightwatch is a night shift in an operations
+  room and Vellum is a case file on a desk, and neither is improved by being
+  inverted. Both paint every colour explicitly so they hold regardless of the
+  host's theme.
+
+  Semantic colour is separate from the accent throughout. Red-to-green is the
+  dramatic arc of the patch loop -- breach becomes secure -- so neither may double
+  as brand colour, or the moment loses its charge.
+*/
+
+/* ---------------------------------------------------------------------------
+   NIGHTWATCH - night shift in an operations room.
+   Deep blue-slate ground, bronze-amber chrome. Carried over from the prototypes.
+   --------------------------------------------------------------------------- */
+:root[data-palette="nightwatch"] {
+  --ground:        #0D1117;
+  --surface:       #151B24;
+  --surface-2:     #1C232E;
+  --code-bg:       #0A0E14;
+  --code-gutter:   #131A22;
+
+  --window-edge:   #C08A4A;   /* the metal of the frame */
+  --window-inner:  #3A4658;
+  --window-fill:   #161D27;
+  --window-title:  #E8B776;
+
+  --ink:           #E6EAF0;
+  --ink-2:         #AAB4C2;
+  --muted:         #8390A2;   /* 5.2:1 on the window fill - WCAG AA at 10.5px */
+  --line:          #29323F;
+
+  --accent:        #E8A254;
+  --accent-soft:   #2E2417;
+  --accent-ink:    #0D1117;
+
+  --breach:        #F2726E;
+  --breach-soft:   #2E1919;
+  --secure:        #52CE97;
+  --secure-soft:   #12291F;
+
+  --shadow: 0 2px 0 rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.4);
+  --pip-empty: #33404F;
+}
+
+/* ---------------------------------------------------------------------------
+   VELLUM - a case file on a desk.
+   Warm paper ground, ink text, oxblood chrome. Light-first, which is unusual for
+   a security tool and reads as an investigation rather than a console.
+   --------------------------------------------------------------------------- */
+:root[data-palette="vellum"] {
+  --ground:        #EDE6D8;
+  --surface:       #F7F2E7;
+  --surface-2:     #E4DBC9;
+  --code-bg:       #FBF8F0;
+  --code-gutter:   #EFE9DA;
+
+  --window-edge:   #7A3B34;
+  --window-inner:  #C9B99B;
+  --window-fill:   #F7F2E7;
+  --window-title:  #5C2A25;
+
+  --ink:           #241E19;
+  --ink-2:         #4E453C;
+  --muted:         #6F6455;   /* 5.2:1 on the window fill - WCAG AA at 10.5px */
+  --line:          #D2C6AF;
+
+  --accent:        #9C4A3F;
+  --accent-soft:   #F0DDD6;
+  --accent-ink:    #FBF8F0;
+
+  --breach:        #A8322B;
+  --breach-soft:   #F4DDDA;
+  --secure:        #2E6B4F;
+  --secure-soft:   #DCEBE1;
+
+  --shadow: 0 2px 0 rgba(90,70,45,.18), 0 10px 24px rgba(90,70,45,.14);
+  --pip-empty: #CFC3AB;
+}
+
+/* --------------------------------------------------------------------------- */
+
+:root {
+  --f-pixel: "Pixelify Sans", ui-monospace, monospace;
+  --f-read:  "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --f-code:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --step: 4px;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-read);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+  Pixel type is reserved for things large enough to survive it: window titles and
+  menu commands. It was originally used for the small uppercase labels too, at
+  10px with pixel-snapping, and they were simply unreadable -- a pixel face has a
+  native size, and set between whole pixels it turns to mush.
+
+  The game identity is carried by the window frames and the titles. Spending
+  legibility on 10px chrome buys nothing, and this product is read for an hour at
+  a stretch.
+*/
+.pixel {
+  font-family: var(--f-pixel);
+  font-synthesis: none;
+  letter-spacing: .01em;
+}
+
+.label {
+  font-family: var(--f-read);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+
+/* Both palettes commit to one look, so no prefers-color-scheme block exists.
+   That is a choice, not an omission -- but it means every surface must paint
+   itself explicitly rather than inheriting whatever sits behind it. */
+:root { color-scheme: only light; }
+:root[data-palette="nightwatch"] { color-scheme: only dark; }

@@ -1,0 +1,104 @@
+/*
+  The window frame: an outer metal rule, an inner hairline, and corner pips.
+  Drawn entirely in CSS so there is no 9-slice image to author, scale, or
+  re-colour when the palette changes.
+*/
+
+.win {
+  position: relative;
+  background: var(--window-fill);
+  border: 2px solid var(--window-edge);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The inner hairline. A pseudo-element rather than a second wrapper, so the
+   markup stays one element per window. */
+.win::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px solid var(--window-inner);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+/* Corner pips. Four small squares that read as rivets on the frame. */
+.win::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--window-edge), var(--window-edge)) 0 0 / 3px 3px no-repeat,
+    linear-gradient(var(--window-edge), var(--window-edge)) 100% 0 / 3px 3px no-repeat,
+    linear-gradient(var(--window-edge), var(--window-edge)) 0 100% / 3px 3px no-repeat,
+    linear-gradient(var(--window-edge), var(--window-edge)) 100% 100% / 3px 3px no-repeat;
+}
+
+.win--breach { border-color: var(--breach); }
+.win--breach::after {
+  background-image:
+    linear-gradient(var(--breach), var(--breach)), linear-gradient(var(--breach), var(--breach)),
+    linear-gradient(var(--breach), var(--breach)), linear-gradient(var(--breach), var(--breach));
+}
+.win--secure { border-color: var(--secure); }
+.win--secure::after {
+  background-image:
+    linear-gradient(var(--secure), var(--secure)), linear-gradient(var(--secure), var(--secure)),
+    linear-gradient(var(--secure), var(--secure)), linear-gradient(var(--secure), var(--secure));
+}
+
+/* Quiet windows sit behind the action - the code pane, reference material. */
+.win--quiet { border-color: var(--window-inner); box-shadow: none; }
+.win--quiet::after { background-image: none; }
+
+.win__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px 6px;
+  border-bottom: 1px solid var(--window-inner);
+  background: color-mix(in srgb, var(--window-edge) 12%, transparent);
+  position: relative;
+  z-index: 1;
+}
+
+.win__title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--window-title);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  line-height: 1.2;
+}
+
+.win__badge { margin-left: auto; }
+
+.win__body {
+  padding: 14px;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+.win__body--flush { padding: 0; }
+
+/* ---------- pips ---------- */
+
+.pips { display: inline-flex; gap: 4px; align-items: center; }
+
+.pip {
+  width: 9px;
+  height: 9px;
+  background: var(--pip-empty);
+  /* A rotated square reads as a diamond without needing a glyph or an image. */
+  transform: rotate(45deg);
+  border-radius: 1px;
+  transition: background .25s ease;
+}
+
+.pips--secure .pip--on { background: var(--secure); }
+.pips--breach .pip--on { background: var(--breach); }
