@@ -1,26 +1,19 @@
 import { useEffect, useState } from "react";
 import { ChallengeScreen } from "./ChallengeScreen.jsx";
+import { PALETTES, usePalette } from "./usePalette.js";
 import { api } from "./api.js";
 import "./App.css";
 
-const PALETTES = [
-  { id: "nightwatch", name: "Nightwatch", note: "night shift, operations room" },
-  { id: "vellum", name: "Vellum", note: "a case file on a desk" }
-];
-
-/**
- * The palette switcher is a temporary reviewing aid, not a product feature.
- * Once a palette is chosen the other is deleted and this comes out with it.
- */
 export function App() {
-  const [palette, setPalette] = useState("nightwatch");
   const [live, setLive] = useState(null);
+  const [isStudyParticipant, setIsStudyParticipant] = useState(false);
+
+  const { palette, setPalette, following, pinned } = usePalette({ isStudyParticipant });
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-palette", palette);
-  }, [palette]);
-
-  useEffect(() => { api.connect().then(setLive); }, []);
+    api.connect().then(setLive);
+    setIsStudyParticipant(api.isStudyParticipant());
+  }, []);
 
   return (
     <>
@@ -34,19 +27,29 @@ export function App() {
           </span>
         )}
 
-        <div className="chrome__switch">
-          <span className="label">palette</span>
-          {PALETTES.map(p => (
+        {!pinned && (
+          <nav className="chrome__switch" aria-label="Appearance">
             <button
-              key={p.id}
-              className={p.id === palette ? "swatch swatch--on pixel" : "swatch pixel"}
-              onClick={() => setPalette(p.id)}
-              title={p.note}
+              className={following ? "swatch swatch--on" : "swatch"}
+              onClick={() => setPalette(null)}
+              aria-pressed={following}
+              title="Follow the system setting"
             >
-              {p.name}
+              Auto
             </button>
-          ))}
-        </div>
+            {PALETTES.map(p => (
+              <button
+                key={p.id}
+                className={!following && p.id === palette ? "swatch swatch--on" : "swatch"}
+                onClick={() => setPalette(p.id)}
+                aria-pressed={!following && p.id === palette}
+                title={`${p.note} · ${p.scheme}`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </nav>
+        )}
       </header>
       <ChallengeScreen />
     </>

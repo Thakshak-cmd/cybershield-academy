@@ -173,5 +173,25 @@ export const api = {
 
   hint(index) {
     return FIXTURE_HINTS[index] ?? null;
+  },
+
+  /**
+   * Whether this session belongs to a study participant, read from the token's
+   * `study` claim.
+   *
+   * Decoded without verification, which is fine because nothing security-relevant
+   * hangs on it: the server checks the signature on every request, and this only
+   * decides whether the appearance control is shown. A tampered claim changes the
+   * palette and nothing else.
+   */
+  isStudyParticipant() {
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) return false;
+      const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      return payload.study === true;
+    } catch {
+      return false;
+    }
   }
 };

@@ -154,6 +154,33 @@ legal/professional discussion under LO3.
 ship images without text alternatives. WCAG considerations are designed in rather
 than retrofitted, and discussed under LO3 — it is an educational product.
 
+Contrast is measured, not eyeballed. Both palettes initially set the small
+uppercase labels at 3.8:1, below the 4.5:1 AA requires at 10.5px; both were
+raised to 5.2:1. Nothing else fell short.
+
+### Two palettes, offered as light and dark
+
+Both palettes ship. Vellum is the light appearance and Nightwatch the dark one,
+following the operating system by default and overridable by the learner.
+
+They are not one design at two brightnesses — an operations room and a case file
+are different worlds, so switching reads more like a day shift and a night shift
+than like a brightness control. That is a deliberate choice, and it is why the
+control names them rather than showing a sun and a moon.
+
+**Study participants are served a fixed palette.** Letting participants see
+different visual designs would put an uncontrolled variable inside the one study
+that gets to run: with n around 12, a split leaves roughly six per appearance,
+which is the same underpowered comparison removed from the research question in
+deviation D3. Any difference in SUS score could then not be attributed to
+anything in particular.
+
+The pin is a default rather than a security control — the preference lives in the
+browser and a determined participant could change it. It removes an accidental
+variable, not a deliberate one; the study protocol is what actually holds
+participants to a single design. This belongs in the Methodology chapter as a
+stated control.
+
 ## 8. Schedule impact
 
 The RPG framing plus visual treatment costs roughly three weeks over the plain
