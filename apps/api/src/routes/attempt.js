@@ -1,9 +1,18 @@
+// @ts-check
 import { Router } from "express";
 import { Challenge, Progress } from "../models/index.js";
 import { append, countAttempts, countHints } from "../telemetry.js";
 import { resolveAttempt } from "../attempt-logic.js";
 
 export const attemptRouter = Router();
+
+/** @typedef {import("../attempt-logic.js").ChallengeDef & Record<string, any>} LeanChallenge */
+
+/**
+ * @typedef {object} LeanProgress
+ * @property {number} [xp]
+ * @property {string[]} [solvedChallenges]
+ */
 
 const MAX_SUBMISSION_BYTES = 20_000;
 
@@ -29,13 +38,15 @@ attemptRouter.post("/challenges/:id/attempt", async (req, res, next) => {
       return res.status(413).json({ error: "That patch is too large to check." });
     }
 
-    const challenge = await Challenge.findOne({ id: req.params.id }).lean();
+    const challenge = /** @type {LeanChallenge | null} */ (
+      await Challenge.findOne({ id: req.params.id }).lean()
+    );
     if (!challenge) return res.status(404).json({ error: "No such challenge." });
 
     const [priorAttempts, hintsUsed, progress] = await Promise.all([
       countAttempts(subjectId, challenge.id),
       countHints(subjectId, challenge.id),
-      Progress.findOne({ subjectId }).lean()
+      /** @type {Promise<LeanProgress | null>} */ (Progress.findOne({ subjectId }).lean())
     ]);
 
     const alreadySolved = !!progress?.solvedChallenges?.includes(challenge.id);

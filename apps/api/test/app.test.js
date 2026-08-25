@@ -14,7 +14,8 @@ let server, base;
 before(async () => {
   server = createApp().listen(0);
   await new Promise(r => server.once("listening", r));
-  base = `http://localhost:${server.address().port}`;
+  const addr = /** @type {import("node:net").AddressInfo} */ (server.address());
+  base = `http://localhost:${addr.port}`;
 });
 
 after(() => server.close());

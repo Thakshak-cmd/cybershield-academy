@@ -1,7 +1,33 @@
+// @ts-check
 import { createHash } from "node:crypto";
 import { validate } from "@cybershield/validator";
+import { SCHEMA_VERSION, countsForBkt } from "@cybershield/shared";
 
-export const SCHEMA_VERSION = 1;
+export { SCHEMA_VERSION };
+
+/** @typedef {import("@cybershield/shared").DraftEvent} DraftEvent */
+
+/**
+ * @typedef {object} ChallengeDef
+ * @property {string} id
+ * @property {import("@cybershield/shared").TopLevelSkill} skill
+ * @property {import("@cybershield/shared").SubSkill} [subSkill]
+ * @property {import("@cybershield/shared").Validator} validator
+ * @property {{ firstAttempt?: number, withHints?: number, retry?: number }} [xp]
+ */
+
+/**
+ * @typedef {object} AttemptContext
+ * @property {string} subjectId
+ * @property {string} sessionId
+ * @property {boolean} [isStudyParticipant]
+ * @property {number} [priorAttempts]
+ * @property {number} [hintsUsed]
+ * @property {number} [durationMs]
+ * @property {boolean} [alreadySolved]
+ * @property {number} [runningXp]
+ * @property {Date} [occurredAt]
+ */
 
 /**
  * Everything an attempt decides, as a pure function.
@@ -20,6 +46,11 @@ export const SCHEMA_VERSION = 1;
  * bonus-farming instead. Efficiency is defined as fewer attempts, which also matches
  * the first-attempt-correctness signal BKT trains on. See docs/deviations D5.
  */
+/**
+ * @param {ChallengeDef} challenge
+ * @param {{ attemptNo: number, hintsUsed: number, passed: boolean }} attempt
+ * @returns {number}
+ */
 export function xpFor(challenge, { attemptNo, hintsUsed, passed }) {
   if (!passed) return 0;
   const table = challenge.xp || {};
@@ -28,27 +59,26 @@ export function xpFor(challenge, { attemptNo, hintsUsed, passed }) {
   return table.retry ?? 40;
 }
 
-/** Stable fingerprint of a submission, so resubmits are detectable without keeping the code. */
+/**
+ * Stable fingerprint of a submission, so resubmits are detectable without keeping
+ * the code itself.
+ * @param {string} source
+ * @returns {string}
+ */
 export function fingerprint(source) {
   return createHash("sha256").update(source, "utf8").digest("hex").slice(0, 16);
 }
 
 /**
- * BKT trains on unaided first attempts only. Later attempts and hint-assisted
- * successes are still recorded for engagement analysis, but they are not evidence
- * about latent skill -- a learner who was told the answer has not demonstrated it.
- * This exclusion has to be stated in the Methodology chapter.
+ * Re-exported so callers have one obvious place to ask the question. The rule
+ * itself lives in @cybershield/shared alongside the event contract it constrains.
  */
-export function isBktObservation({ attemptNo, hintsUsed }) {
-  return attemptNo === 1 && hintsUsed === 0;
-}
+export const isBktObservation = countsForBkt;
 
 /**
- * @param {object} challenge   challenge definition
- * @param {string} source      submitted patch
- * @param {object} context     { subjectId, sessionId, isStudyParticipant,
- *                               priorAttempts, hintsUsed, durationMs,
- *                               alreadySolved, runningXp, occurredAt }
+ * @param {ChallengeDef} challenge
+ * @param {string} source  the submitted patch
+ * @param {AttemptContext} context
  */
 export function resolveAttempt(challenge, source, context) {
   const {
@@ -74,6 +104,7 @@ export function resolveAttempt(challenge, source, context) {
     isStudyParticipant
   };
 
+  /** @type {DraftEvent[]} */
   const events = [{
     ...base,
     type: "challenge.attempted",

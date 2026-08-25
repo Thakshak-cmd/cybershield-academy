@@ -89,6 +89,7 @@ describe("SEC-104 validation", () => {
   test("unparseable code returns a verdict, not a crash", () => {
     const r = validate(challenge, "const sql = 'SELECT * FROM users WHERE");
     assert.equal(r.passed, false);
+    assert.ok(r.parseError, "an unparseable submission must report where it broke");
     assert.equal(r.parseError.line, 1);
     assert.deepEqual(r.failedRules, ["submission.parse-error"]);
   });

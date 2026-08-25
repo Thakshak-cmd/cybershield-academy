@@ -40,9 +40,18 @@ describe("XP rules", () => {
   test("elapsed time never affects the award", () => {
     // Guards deviation D5: time-on-task is an engagement metric, so paying XP for
     // speed would turn that metric into a measure of bonus-farming.
-    const slow = xpFor(challenge, { attemptNo: 1, hintsUsed: 0, passed: true, durationMs: 900000 });
-    const fast = xpFor(challenge, { attemptNo: 1, hintsUsed: 0, passed: true, durationMs: 900 });
-    assert.equal(slow, fast);
+    //
+    // This has to go through resolveAttempt, which is where durationMs actually
+    // flows. Passing durationMs straight to xpFor proves nothing, because xpFor
+    // does not accept it -- both calls would be identical and the test vacuous.
+    const slow = resolveAttempt(challenge, GOOD, ctx({ durationMs: 900_000 }));
+    const fast = resolveAttempt(challenge, GOOD, ctx({ durationMs: 900 }));
+    assert.equal(slow.xpAwarded, fast.xpAwarded);
+    assert.equal(slow.xpAwarded, 120);
+
+    // And the duration must still reach the log, since the study needs it.
+    assert.equal(slow.events[0].payload.durationMs, 900_000);
+    assert.equal(fast.events[0].payload.durationMs, 900);
   });
 });
 
@@ -92,6 +101,7 @@ describe("resolveAttempt", () => {
   test("running XP total is carried into the xp event", () => {
     const r = resolveAttempt(challenge, GOOD, ctx({ runningXp: 500 }));
     const xp = r.events.find(e => e.type === "xp.awarded");
+    assert.ok(xp, "a passing first attempt must emit an xp.awarded event");
     assert.equal(xp.payload.runningTotal, 620);
   });
 

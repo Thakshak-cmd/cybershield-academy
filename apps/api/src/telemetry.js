@@ -1,3 +1,4 @@
+// @ts-check
 import { Counter, Event } from "./models/index.js";
 
 /**
@@ -10,21 +11,36 @@ import { Counter, Event } from "./models/index.js";
  */
 export async function reserveSeq(subjectId, count) {
   if (count < 1) return [];
-  const doc = await Counter.findByIdAndUpdate(
-    subjectId,
-    { $inc: { seq: count } },
-    { upsert: true, new: true }
-  ).lean();
+  const doc = /** @type {{ seq: number } | null} */ (
+    await Counter.findByIdAndUpdate(
+      subjectId,
+      { $inc: { seq: count } },
+      { upsert: true, new: true }
+    ).lean()
+  );
+
+  // upsert + new should always return a document, but a failed upsert race returns
+  // null. Reading .seq off that would throw inside the event append and silently
+  // lose the batch, so fail loudly instead -- the log is the source of truth and a
+  // dropped write is not recoverable.
+  if (!doc || typeof doc.seq !== "number") {
+    throw new Error(`Could not reserve sequence numbers for ${subjectId}`);
+  }
+
   const end = doc.seq;             // value AFTER incrementing
   const start = end - count + 1;
   return Array.from({ length: count }, (_, i) => start + i);
 }
 
 /**
- * Append events to the log.
+ * Append events to the log, assigning each its position in the subject's sequence.
  *
  * `ordered: true` means a duplicate-key collision on (subjectId, seq) stops the
  * batch rather than silently writing a partial, out-of-order run.
+ *
+ * @param {string} subjectId
+ * @param {import("@cybershield/shared").DraftEvent[]} events
+ * @returns {Promise<import("@cybershield/shared").TelemetryEvent[]>}
  */
 export async function append(subjectId, events) {
   if (!events.length) return [];
