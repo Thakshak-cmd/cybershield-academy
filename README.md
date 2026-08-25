@@ -21,13 +21,13 @@ services/ml/   BKT model, sequencing policy, evaluation, FastAPI service
 
 ## Running it
 
-Two processes. The BKT service first:
+Two processes, in separate terminals. The BKT service:
 
 ```
 npm run ml
 ```
 
-Then the API, which needs `.env.local` (copy `.env.example`):
+and the API, which needs `.env.local` (copy `.env.example`):
 
 ```
 npm run dev --workspace @cybershield/api
@@ -44,7 +44,8 @@ npm run smoke           # full stack: Mongo + API + BKT service
 
 `npm run smoke` walks a learner through one complete loop -- recommendation,
 start, a naive patch, the correct patch -- and prints the resulting event log. It
-needs `npm run ml` running in another terminal.
+starts whatever it needs, so nothing has to be running first; an already-running
+BKT service is reused and left alone.
 
 ## The authoring loop
 

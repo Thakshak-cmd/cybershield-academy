@@ -8,18 +8,24 @@
  * neither shows the three processes actually talking to each other. This walks a
  * learner through one full loop and prints the event log that resulted.
  *
- * Needs the BKT service running:
- *   cd services/ml && ./.venv/bin/uvicorn app:app --port 8811
+ *   npm run smoke
  *
- * Then:
- *   node apps/api/scripts/smoke.js
+ * Starts whatever it needs and shuts it down again. If the BKT service is already
+ * running it is reused and left alone; otherwise one is started for the duration.
+ * Requiring a second terminal made the common case "forgot to start it" rather
+ * than "ran the test".
  */
 
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
 const ML_URL = process.env.ML_SERVICE_URL || "http://localhost:8811";
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const ok = s => c("32", s);
@@ -40,16 +46,9 @@ function check(label, condition, detail = "") {
 async function main() {
   console.log(bold("\nCyberShield backend smoke test\n"));
 
-  // --- BKT service must be up before anything else is worth doing ---
-  try {
-    const r = await fetch(`${ML_URL}/health`);
-    if (!r.ok) throw new Error(`status ${r.status}`);
-  } catch (err) {
-    console.error(bad(`Cannot reach the BKT service at ${ML_URL}`));
-    console.error(dim("  cd services/ml && ./.venv/bin/uvicorn app:app --port 8811"));
-    process.exit(1);
-  }
-  console.log(`${ok("PASS")} BKT service reachable at ${ML_URL}`);
+  // --- BKT service: reuse a running one, or start our own ---
+  const ml = await ensureMlService();
+  console.log(`${ok("PASS")} BKT service ${ml.started ? "started" : "already running"} at ${ML_URL}`);
 
   const mongod = await MongoMemoryServer.create();
   process.env.MONGODB_URI = mongod.getUri("cybershield_smoke");
@@ -163,6 +162,7 @@ async function main() {
   server.close();
   await mongoose.disconnect();
   await mongod.stop();
+  await ml.stop();
 
   console.log(
     failures === 0
@@ -170,6 +170,65 @@ async function main() {
       : bad(`\n${failures} check(s) failed.\n`)
   );
   process.exit(failures === 0 ? 0 : 1);
+}
+
+/**
+ * Reuse a running BKT service, or start one for the duration of this run.
+ * @returns {Promise<{ started: boolean, stop: () => Promise<void> }>}
+ */
+async function ensureMlService() {
+  if (await mlHealthy()) return { started: false, stop: async () => {} };
+
+  const uvicorn = join(REPO_ROOT, "services/ml/.venv/bin/uvicorn");
+  if (!existsSync(uvicorn)) {
+    console.error(bad("The BKT service virtualenv is missing."));
+    console.error(dim("  cd services/ml && python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt"));
+    process.exit(1);
+  }
+
+  const child = spawn(
+    uvicorn,
+    ["app:app", "--port", "8811", "--app-dir", join(REPO_ROOT, "services/ml"), "--log-level", "warning", "--loop", "asyncio"],
+    { stdio: ["ignore", "ignore", "pipe"] }
+  );
+
+  let stderr = "";
+  child.stderr.on("data", d => { stderr += d.toString(); });
+  child.on("exit", code => {
+    if (code !== 0 && code !== null) {
+      console.error(bad(`BKT service exited with code ${code}`));
+      if (stderr.trim()) console.error(dim(stderr.trim()));
+    }
+  });
+
+  // Poll rather than sleeping a fixed amount: startup time varies, and a fixed
+  // wait is either flaky or slower than it needs to be.
+  for (let i = 0; i < 60; i++) {
+    if (await mlHealthy()) {
+      return {
+        started: true,
+        stop: async () => {
+          child.kill("SIGTERM");
+          await new Promise(r => child.once("exit", r));
+        }
+      };
+    }
+    await new Promise(r => setTimeout(r, 250));
+  }
+
+  child.kill("SIGTERM");
+  console.error(bad("The BKT service did not become healthy within 15 seconds."));
+  if (stderr.trim()) console.error(dim(stderr.trim()));
+  process.exit(1);
+}
+
+async function mlHealthy() {
+  try {
+    const r = await fetch(`${ML_URL}/health`, { signal: AbortSignal.timeout(500) });
+    return r.ok;
+  } catch {
+    return false;
+  }
 }
 
 main().catch(err => {

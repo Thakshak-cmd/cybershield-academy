@@ -20,7 +20,7 @@
     "verify:all": "npm run verify && npm run test:integration --workspace @cybershield/api",
     "test:integration": "npm run test:integration --workspace @cybershield/api",
     "smoke": "npm run smoke --workspace @cybershield/api",
-    "ml": "services/ml/.venv/bin/uvicorn app:app --port 8811 --app-dir services/ml",
+    "ml": "services/ml/.venv/bin/uvicorn app:app --port 8811 --app-dir services/ml --loop asyncio",
     "ml:test": "services/ml/.venv/bin/python -m pytest services/ml -q"
   },
   "devDependencies": {

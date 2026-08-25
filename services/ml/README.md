@@ -81,7 +81,13 @@ python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
 ./.venv/bin/uvicorn app:app --port 8811
 ```
 
-or `npm run ml` from the repo root.
+or `npm run ml` from the repo root, which also pins `--loop asyncio`: uvloop's
+signal handling turns Ctrl+C into an alarming traceback on shutdown, and the
+throughput difference is irrelevant for a service doing scalar arithmetic.
+
+Opening the port in a browser gives a description of the service and a link to
+the generated OpenAPI docs at `/docs`, rather than a bare 404 that reads as
+"broken" when the service is running perfectly well.
 
 | Endpoint | Purpose |
 |---|---|

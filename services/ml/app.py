@@ -93,6 +93,25 @@ def _skills_in(req: RecommendRequest) -> set[str]:
     return {c.skill for c in req.candidates} | {o.skill for o in req.observations}
 
 
+@app.get("/", include_in_schema=False)
+def root() -> dict:
+    """Something useful for anyone who opens the port in a browser.
+
+    A bare 404 here reads as "the service is broken" when it is in fact running
+    perfectly well and simply has no root route.
+    """
+    return {
+        "service": "CyberShield BKT service",
+        "status": "running",
+        "endpoints": {
+            "GET /health": "liveness",
+            "POST /mastery": "current mastery per skill, and what it unlocks",
+            "POST /recommend": "the next challenge, or 204 when nothing is open",
+        },
+        "interactive_docs": "/docs",
+    }
+
+
 @app.get("/health")
 def health() -> dict:
     """Liveness. Depends on nothing, so it answers even when a request would not."""
