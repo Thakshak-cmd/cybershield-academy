@@ -121,6 +121,32 @@ three evaluation instruments.
 
 ---
 
+## D6 -- Follow-through is derived from the log, not stored on the event
+
+**Earlier design said:** the `recommendation.served` event would carry a
+`wasFollowed` field, "backfilled when the next `challenge.started` arrives".
+
+**Delivered instead:** no such field. Whether a recommendation was taken is
+computed at analysis time by `deriveFollowed`, which pairs each
+`recommendation.served` with the first `challenge.started` after it in sequence
+order.
+
+**Why:** the two rules contradicted each other. The telemetry model states that
+events are never updated or deleted, and backfilling a field is a mutation. The
+contradiction would not have surfaced as a bug -- both writes would have
+succeeded -- but it would have left events whose meaning depended on when they
+were read, which is exactly what an append-only log exists to prevent.
+
+**Consequence:** strictly better. There is no second write to fail halfway, and
+the definition of "followed" can be revised during analysis without the collected
+data being wrong. A recommendation with no subsequent start resolves to `null`
+rather than `false`: the learner did not decline it, the session ended, and
+counting that as a refusal would bias the follow rate down by one per session.
+The general rule now recorded in `telemetry-model.md` is that anything
+reconstructible from the log should be reconstructed from it.
+
+---
+
 ## Supervisor communication
 
 D1 in particular changes the technical shape of the project after approval. It should

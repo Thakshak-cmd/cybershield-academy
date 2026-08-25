@@ -2,6 +2,7 @@ import express from "express";
 import { connect } from "./db.js";
 import { requireAuth } from "./auth.js";
 import { attemptRouter } from "./routes/attempt.js";
+import { createNextRouter } from "./routes/next.js";
 
 /**
  * Lazily open (or reuse) the pooled connection for this invocation.
@@ -19,7 +20,11 @@ async function withDb(req, res, next) {
   }
 }
 
-export function createApp() {
+/**
+ * @param {{ mlClient?: import("./ml-client.js").MlClient }} [deps]
+ *   Injectable so routes can be exercised without a running Python service.
+ */
+export function createApp(deps = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "256kb" }));
@@ -29,6 +34,7 @@ export function createApp() {
   app.get("/api/health", (req, res) => res.json({ ok: true }));
 
   app.use("/api", requireAuth, withDb, attemptRouter);
+  app.use("/api", requireAuth, withDb, createNextRouter(deps));
 
   app.use((err, req, res, _next) => {
     // Logged server-side; the caller learns nothing about internals.

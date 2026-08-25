@@ -63,7 +63,7 @@ events remain interpretable rather than silently mis-parsed.
 | `xp.awarded` | XP granted | `amount`, `reason`, `runningTotal` |
 | `badge.earned` | Badge unlocked | `badgeId`, `skill` |
 | `mastery.updated` | BKT posterior recomputed | `skill`, `pMasteryBefore`, `pMasteryAfter` |
-| `recommendation.served` | Adaptive engine picks next challenge | `challengeId`, `pMastery`, `policy`, `wasFollowed` |
+| `recommendation.served` | Adaptive engine picks next challenge | `challengeId`, `pMastery`, `policy`, `reason` |
 | `session.started` / `session.ended` | Session boundaries | `sessionId`, `durationMs` |
 
 ### The BKT observation
@@ -76,11 +76,23 @@ choice a marker can reasonably question.
 
 ### `recommendation.served` earns its place
 
-`wasFollowed` records whether the learner took the recommended challenge or chose
-another. Without it there is no way to evaluate whether adaptive sequencing changed
+Whether the learner *took* the recommendation is what connects the model to the
+platform. Without it there is no way to evaluate whether adaptive sequencing changed
 behaviour at all — only whether the model's predictions were accurate. The
-dissertation's research question is about the *platform*, not the model in isolation,
-so this field is what connects the two.
+dissertation's research question is about the platform, not the model in isolation.
+
+**This is derived, not stored.** An earlier draft of this document had a
+`wasFollowed` field "backfilled when the next `challenge.started` arrives", which
+directly contradicts the append-only rule above — backfilling is a mutation. It is
+instead computed at analysis time: the first `challenge.started` after a
+`recommendation.served`, in sequence order, either names the recommended challenge
+or it does not.
+
+Deriving it is strictly better than storing it. There is no second write to fail
+halfway, no event that means different things depending on when it was read, and
+the definition of "followed" can be revised during analysis without the collected
+data being wrong. The rule is general: anything reconstructible from the log should
+be reconstructed from the log.
 
 ## What is deliberately NOT recorded
 

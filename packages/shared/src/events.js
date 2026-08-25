@@ -94,10 +94,13 @@ export const EVENT_TYPES = /** @type {const} */ ([
  * @property {import("./skills.js").TopLevelSkill} skill
  * @property {number} pMastery
  * @property {"bkt-adaptive"|"linear-fallback"} policy
- * @property {boolean|null} wasFollowed
- *   Whether the learner actually took the recommendation. Without this there is no
- *   way to show adaptive sequencing changed behaviour -- only that predictions were
- *   accurate. Backfilled when the next challenge.started arrives.
+ * @property {string} reason
+ *   Human-readable justification, shown in the interface so the learner is not
+ *   simply handed a challenge with no explanation.
+ *
+ * Note there is no `wasFollowed` field. Whether the learner took the
+ * recommendation is derived from the log by `deriveFollowed` -- storing it would
+ * mean going back and editing an event, which the append-only rule forbids.
  */
 
 /**
@@ -139,4 +142,55 @@ export function countsForBkt(attempt) {
  */
 export function bktObservations(events) {
   return events.filter(e => e.type === "challenge.attempted" && e.payload.countsForBkt === true);
+}
+
+
+/**
+ * Pair each recommendation with what the learner did next.
+ *
+ * Derived rather than stored: the log is append-only, so an event cannot be
+ * revisited once written. For each `recommendation.served`, the first
+ * `challenge.started` after it in sequence order decides the outcome.
+ *
+ * A recommendation with nothing after it is `followed: null`, not `false`. The
+ * learner did not decline it -- the session ended, and treating that as a refusal
+ * would bias the follow rate downward by exactly one per session.
+ *
+ * @param {TelemetryEvent[]} events  any order; sorted by seq internally
+ * @returns {{ seq: number, recommended: string, started: string|null, followed: boolean|null }[]}
+ */
+export function deriveFollowed(events) {
+  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  /** @type {{ seq: number, recommended: string, started: string|null, followed: boolean|null }[]} */
+  const out = [];
+
+  for (let i = 0; i < ordered.length; i++) {
+    const e = ordered[i];
+    if (e.type !== "recommendation.served") continue;
+
+    const next = ordered.slice(i + 1).find(x => x.type === "challenge.started");
+    out.push({
+      seq: e.seq,
+      recommended: e.payload.challengeId,
+      started: next ? next.payload.challengeId : null,
+      followed: next ? next.payload.challengeId === e.payload.challengeId : null
+    });
+  }
+  return out;
+}
+
+/**
+ * Share of recommendations the learner acted on.
+ *
+ * Recommendations with no subsequent start are excluded rather than counted as
+ * refusals. Returns NaN when nothing is resolvable, so an empty result cannot be
+ * mistaken for a follow rate of zero.
+ *
+ * @param {TelemetryEvent[]} events
+ * @returns {number}
+ */
+export function followRate(events) {
+  const resolved = deriveFollowed(events).filter(r => r.followed !== null);
+  if (!resolved.length) return NaN;
+  return resolved.filter(r => r.followed).length / resolved.length;
 }
