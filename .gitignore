@@ -43,3 +43,6 @@ npm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# python
+services/ml/.pytest_cache/
