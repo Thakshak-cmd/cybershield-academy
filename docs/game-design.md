@@ -1,0 +1,166 @@
+# Game Design
+
+Decisions taken 25 Aug 2026, after two interaction prototypes. This document is the
+source for the dissertation's Design chapter sections on the learning loop and
+gamification.
+
+## The problem being solved
+
+Attacking is intrinsically motivating: there is a puzzle, a discoverable answer, and
+a moment where it resolves. Defending is not — you are removing a bug. If every
+challenge is "here is a vulnerable snippet, fix it", the result is a worksheet with
+XP sprinkled on top, and the gamification claim collapses under inspection.
+
+Every decision below exists to give defensive work a dramatic beat.
+
+## 1. The core loop
+
+1. **Watch it break.** A scripted attack lands against the vulnerable code. The
+   payload is canned; the learner never composes one. This keeps the platform
+   defensive, which matters for the LO3 ethics position.
+2. **Patch it.** Editor or guided fix, hints available.
+3. **Watch it bounce.** The same attack replays against the patched code and fails.
+
+## 2. The win condition: two suites in tension
+
+A patch must satisfy both:
+
+- **Attack suite — every payload must fail.** Multiple variants per challenge, not one.
+- **Functional suite — every legitimate case must pass.** Escaping everything, or
+  deleting the endpoint, does not win.
+
+This is what makes it a puzzle rather than a quiz. Naive fixes fail in *different*
+directions, and the surviving payload (or the locked-out customer) is shown back to
+the learner. That feedback is where secure-coding intuition actually forms.
+
+Worked example — SEC-104, three plausible patches:
+
+| Patch | Attack suite | Functional suite | Fails because |
+|---|---|---|---|
+| Strip single quotes | 2/3 | 2/3 | `1 OR 1=1` needs no quote; O'Brien cannot log in |
+| Blocklist SQL keywords | 2/3 | 2/3 | `admin'\|\|'1'='1` uses no keyword; "Orwell" trips the filter |
+| Parameterised query | 3/3 | 3/3 | — |
+
+## 3. Format portfolio
+
+One format twenty times is a worksheet. Target mix (~20 items, ~60 min session):
+
+| Format | Time | Count | Role |
+|---|---|---|---|
+| Spot the flaw | 30-60s | ~8 | Warm-up; cheap to author; each is a BKT observation |
+| Patch the code | 4-8 min | ~6 | The core loop |
+| Harden the config | 2-4 min | ~3 | CSP, SameSite, DB grants — security outside app code |
+| Review the fix | 2-4 min | ~3 | Judging a fix is a distinct skill from writing one |
+
+Spot-the-flaw items are not filler: they are the cheapest way to raise the
+observation count per skill, which is what makes BKT viable on a small sample (R3).
+
+## 4. Framing: a Blue Team RPG
+
+The platform is framed as a role at a fictional company (Aurora Store), not a ticket
+queue. A ticket queue is the least motivating frame in software and would actively
+undercut the engagement thesis.
+
+**Adopted — fiction and progression:**
+
+- **Character sheet** — see §5.
+- **Skill tree** per vulnerability domain, unlocking on inferred mastery.
+- **Quest chains** — challenges grouped into narrative arcs.
+- **Boss encounters** — capstone challenges combining multiple vulnerability classes.
+- **Consequence** — failure lets the breach progress; the company's security posture
+  visibly degrades.
+
+**Rejected — simulation machinery:** overworld map and movement, dialogue trees,
+inventory and loot, party members, battle animations, procedural generation. These
+are months of systems work that teach nothing about web security.
+
+### Why bosses are the strongest element
+
+A capstone requiring SQLi *and* CSRF knowledge together is a **transfer task**: it
+tests whether learning generalised beyond the drill. That is precisely the "practical
+application" clause of the research question, and it happens to be the most engaging
+part of the design. Two boss encounters are committed; a third is a stretch goal.
+
+## 5. The character sheet is the model
+
+The three stats are the **live posteriors of the BKT model** — the same numbers that
+drive challenge selection — rendered as a progression display. Skill tree nodes
+unlock on mastery thresholds, so the tree opens because the model inferred readiness,
+not because a challenge counter incremented.
+
+This is the defence against decorative gamification: the progression display and the
+adaptive engine are the same object. Every game element should be doing pedagogical
+or evaluative work, and it should be possible to say which in one sentence.
+
+### Calibration findings from prototype 2
+
+Three problems surfaced that would otherwise have been found in week 9:
+
+1. **The sequencing policy is subtle.** Sorting available challenges by weakest skill
+   alone makes the policy grind the always-open practice drill forever, since drills
+   raise mastery but never mark progress. Sorting by "prefer unseen content" instead
+   causes it to tunnel down one branch, running a single skill to 0.999 while the
+   others stay locked. The working policy uses weakest-skill as the primary key with
+   freshness only as a tiebreak. This is a textbook explore/exploit trade-off and
+   belongs in the Implementation chapter.
+
+2. **BKT converges faster than good progression allows.** With P(G)=0.20 and
+   P(S)=0.10, two correct answers move a learner from 0.15 to 0.879, and twelve
+   observations reach the top rank with the capstone unlocked. That is correct
+   inference and bad game design. **Mitigation:** gate boss encounters on mastery
+   *and* a minimum count of distinct challenges cleared.
+
+3. **Mastery drops sharply on failure** (0.554 to 0.308 on a single incorrect
+   answer), which can re-lock an already-open node. **Mitigation:** nodes latch open
+   once unlocked. The bar still moves both ways; the tree never claws back.
+
+## 6. Gamification corrections to the approved proposal
+
+**No speed bonus.** The proposal promises "bonus XP for efficiency and accuracy", but
+§6.3 uses average time-on-task as an *engagement metric*. Rewarding speed would make
+time-on-task measure bonus-farming rather than engagement — confounding the study's
+own dependent variable. Efficiency is therefore defined as *fewer attempts*, which
+also aligns the mechanic with the first-attempt-correctness signal BKT trains on.
+
+**Leaderboard stays opt-in.** With ~12 participants who likely know one another, a
+public ranking demotivates the lower half and complicates the ethics position. The
+proposal already says "optional"; streaks and personal bests are the prominent
+surface instead.
+
+## 7. Visual treatment
+
+The battle screen, not the overworld, carries JRPG identity — and the challenge
+screen already maps onto one: the attack suite is enemy HP, the patch is the attack,
+the functional suite is the constraint against hitting your own side.
+
+**In scope:** windowed UI chrome (CSS and 9-slice, not animation), static boss
+entities at three states each (idle / hit / defeated), static portraits, skill and
+badge icons.
+
+**Out of scope:** walk cycles, tilesets, battle animations, environment art.
+
+**Split typography.** The *world* uses display/pixel type for chrome; the *terminal
+the learner patches in* stays crisp monospace. A pixel typeface at code density is
+unreadable, and the platform is fundamentally about reading code. The split is also
+diegetically coherent: a real screen inside a game world.
+
+**Assets are licensed, not authored.** Sources with clean terms only — Kenney (CC0),
+game-icons.net (CC-BY 3.0), OpenGameArt/LPC (CC-BY-SA 3.0, note the share-alike is
+viral). Every asset is recorded in an asset manifest with source, licence, and
+required attribution; the manifest becomes a dissertation appendix and supports the
+legal/professional discussion under LO3.
+
+**Accessibility.** Sprite-heavy interfaces tend to encode state in colour alone and
+ship images without text alternatives. WCAG considerations are designed in rather
+than retrofitted, and discussed under LO3 — it is an educational product.
+
+## 8. Schedule impact
+
+The RPG framing plus visual treatment costs roughly three weeks over the plain
+ticket-based design. Paid for by holding challenge count at ~20 (down from ~26) and
+shipping two boss encounters rather than three.
+
+**Art is the most compressible part of the project.** If week 9 is behind, the
+platform ships with placeholder chrome and the study still runs. If the validation
+engine is behind in week 9, nothing runs. The week-10 feature freeze (R1) takes
+precedence over every item in §7.

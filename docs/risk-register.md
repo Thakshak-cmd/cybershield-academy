@@ -21,6 +21,10 @@ Scoring: Likelihood and Impact each 1 (low) – 5 (high). Severity = L × I.
 | R10 | **Participant withdrawal** after data collection, per the ethics protocol | 2 | 2 | 4 | Withdrawal deletes the pseudonym mapping and the subject's events; analysis scripts tolerate variable n | Mitigated by design |
 | R11 | **Scope creep from the approved proposal** — proposal promised full Docker execution for all challenges | 3 | 3 | 9 | Deviations documented as reasoned decisions (see `deviations-from-proposal.md`) and raised with supervisor rather than discovered at marking | Open |
 | R12 | **Illness or personal circumstances** compressing an already tight schedule | 2 | 4 | 8 | Two-week buffer held before the Jan 13 deadline; Extenuating Circumstances process understood in advance | Open |
+| R13 | **Art production overruns** — sprite and UI chrome work expands to fill available time | 4 | 3 | 12 | Assets licensed, never authored; scope fixed to static entities and CSS chrome; art is explicitly the first thing cut if week 9 is behind | Open |
+| R14 | **Asset licence breach** — an itch.io or OpenGameArt pack with terms incompatible with publication or share-alike obligations not met | 2 | 4 | 8 | Prefer CC0 (Kenney); asset manifest records source, licence and attribution for every file; manifest reviewed before submission and included as an appendix | Open |
+| R15 | **Adaptive policy tuned badly and nobody notices** — a broken sequencing policy still looks fine; the learner just has a worse session | 3 | 4 | 12 | Policy covered by unit tests over simulated learners asserting balanced progression; three distinct failure modes already identified in prototype 2 | Open |
+| R16 | **BKT thresholds mis-calibrated**, letting a lucky streak unlock boss content in ~12 observations | 3 | 3 | 9 | Boss gates require mastery *and* a minimum count of distinct challenges cleared; nodes latch open so failure never claws back progress | Open |
 
 ## Highest-severity risks
 

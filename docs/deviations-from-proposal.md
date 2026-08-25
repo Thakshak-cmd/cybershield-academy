@@ -75,6 +75,52 @@ analysis, which is where the proposal's §6.4 had effectively already placed it.
 
 ---
 
+## D4 -- Reframed from points-badges gamification to a serious-games design
+
+**Proposal said:** Gamification consisting of "XP and Levelling", "Badges",
+"Leaderboard", "Progressive Difficulty" and "Patching Loops" -- a points-badges-
+leaderboards (PBL) treatment layered over the challenges.
+
+**Delivered instead:** A role-based framing (Blue Team engineer at a fictional
+company) with narrative quest chains, a skill tree gated on inferred mastery,
+capstone boss encounters, and consequence tied to the company's security posture.
+The PBL elements remain but are subordinate to the fiction.
+
+**Why:** PBL gamification is extensively critiqued in the literature as shallow --
+Nicholson's "meaningful gamification" argument among others -- and a marker familiar
+with that critique would apply it directly to the proposal as written. More
+practically, the proposal's own framing was a ticket queue, which is the least
+motivating frame available and would have undercut the engagement thesis the project
+is trying to test.
+
+**Consequence:** The literature review shifts from gamification-in-education toward
+serious games and self-determination theory, which is a stronger position to argue
+from and gives considerably more to critique than the four platforms in the
+proposal's section 3. Costs roughly three weeks, paid for by reducing challenge count
+from ~26 to ~20 and shipping two boss encounters rather than three. See
+`game-design.md` for the full design and `risk-register.md` R13-R16.
+
+---
+
+## D5 -- No speed-based XP bonus
+
+**Proposal said:** "Users earn experience points for completing challenges, with
+bonus XP for efficiency and accuracy."
+
+**Delivered instead:** XP rewards accuracy and *fewer attempts*. There is no reward
+for elapsed time.
+
+**Why:** The proposal's section 6.3 uses average time-on-task as an engagement
+metric. Rewarding speed would cause participants to optimise for the bonus, so
+time-on-task would measure bonus-farming rather than engagement -- confounding the
+study's own dependent variable. Defining efficiency as fewer attempts also aligns the
+mechanic with the first-attempt-correctness signal the BKT model trains on.
+
+**Consequence:** A minor mechanic change that protects the validity of one of the
+three evaluation instruments.
+
+---
+
 ## Supervisor communication
 
 D1 in particular changes the technical shape of the project after approval. It should

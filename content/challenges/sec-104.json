@@ -1,0 +1,50 @@
+{
+  "id": "sec-104",
+  "title": "Support says someone logged into an admin account without the password",
+  "skill": "sqli",
+  "subSkill": "sqli.parameterised-query",
+  "tier": "intermediate",
+  "format": "patch",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "file": "routes/auth.js",
+  "reportedBy": "Priya (Support)",
+
+  "brief": "A customer support ticket says an attacker reached the admin dashboard without knowing any password. The login endpoint builds its query by hand.",
+
+  "vulnerable": "app.post('/api/login', async (req, res) => {\n  const { email, password } = req.body;\n\n  const sql = `SELECT id, role FROM users\n     WHERE email = '${email}'\n     AND password_hash = '${sha256(password)}'`;\n\n  const [user] = await db.query(sql);\n  if (user) req.session.userId = user.id;\n});",
+
+  "meta": {
+    "dbMethod": "query",
+    "inputNames": ["email", "password"],
+    "expectedTable": "users"
+  },
+
+  "rules": [
+    "sqli.no-string-interpolation",
+    "sqli.uses-parameterised-query",
+    "input.preserved-verbatim",
+    "input.no-content-blocklist",
+    "sql.queries-expected-table"
+  ],
+
+  "attackSuite": [
+    { "payload": "admin' OR '1'='1' --", "label": "Classic auth bypass" },
+    { "payload": "1 OR 1=1", "label": "Numeric context - needs no quotes" },
+    { "payload": "admin'||'1'='1", "label": "Concatenation - uses no keywords" }
+  ],
+
+  "functionalSuite": [
+    { "value": "alice@aurora.shop", "label": "Ordinary login" },
+    { "value": "o'brien@aurora.shop", "label": "Real address with an apostrophe" },
+    { "value": "victor.orwell@aurora.shop", "label": "Surname contains \"or\"" }
+  ],
+
+  "hints": [
+    "The problem is not which characters arrive. It is that the value becomes part of the statement at all.",
+    "Anything you filter, you also filter for real users. What would let the database tell code and data apart on its own?",
+    "Pass the SQL and the values to db.query() separately, using ? placeholders."
+  ],
+
+  "xp": { "firstAttempt": 120, "withHints": 60, "retry": 40 }
+}
