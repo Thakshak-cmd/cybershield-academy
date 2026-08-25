@@ -14,7 +14,9 @@
     "dev": "npm run dev --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "tsc -p jsconfig.json"
+    "typecheck": "tsc -p jsconfig.json",
+    "check": "node packages/validator/bin/check.js",
+    "verify": "npm run typecheck && npm test --workspaces --if-present"
   },
   "devDependencies": {
     "@types/express": "^4.17.25",
