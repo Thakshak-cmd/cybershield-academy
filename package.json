@@ -22,11 +22,14 @@
     "smoke": "npm run smoke --workspace @cybershield/api",
     "ml": "services/ml/.venv/bin/uvicorn app:app --port 8811 --app-dir services/ml --loop asyncio",
     "ml:test": "services/ml/.venv/bin/python -m pytest services/ml -q",
-    "web": "npm run dev --workspace @cybershield/web"
+    "web": "npm run dev --workspace @cybershield/web",
+    "dev:api": "npm run dev:memory --workspace @cybershield/api"
   },
   "devDependencies": {
     "@types/express": "^4.17.25",
     "@types/node": "^22.10.5",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "mongodb-memory-server": "^11.2.0",
     "typescript": "^5.7.2"
   }

@@ -25,6 +25,7 @@ Scoring: Likelihood and Impact each 1 (low) – 5 (high). Severity = L × I.
 | R14 | **Asset licence breach** — an itch.io or OpenGameArt pack with terms incompatible with publication or share-alike obligations not met | 2 | 4 | 8 | Prefer CC0 (Kenney); asset manifest records source, licence and attribution for every file; manifest reviewed before submission and included as an appendix | Open |
 | R15 | **Adaptive policy tuned badly and nobody notices** — a broken sequencing policy still looks fine; the learner just has a worse session | 3 | 4 | 12 | Policy covered by unit tests over simulated learners asserting balanced progression; three distinct failure modes already identified in prototype 2 | Open |
 | R16 | **BKT thresholds mis-calibrated**, letting a lucky streak unlock boss content in ~12 observations | 3 | 3 | 9 | Boss gates require mastery *and* a minimum count of distinct challenges cleared; nodes latch open so failure never claws back progress | Open |
+| R17 | **Middleware ordering regression leaves a route unprotected** — the routes keep working, so nothing looks broken | 3 | 5 | 15 | Open paths are an explicit list, never a prefix match; tests assert that an unauthenticated request is refused before any database work and that /auth/me and /auth/logout still demand a token | Mitigated by test |
 
 ## Highest-severity risks
 

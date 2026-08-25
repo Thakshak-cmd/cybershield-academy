@@ -7,6 +7,54 @@
  * apps/api/src/routes -- so switching between them changes nothing downstream.
  */
 
+/**
+ * What the API hands back, mirroring apps/api/src/routes/next.js.
+ * Note there is no `rules`, `attackSuite`, `functionalSuite` or `hints`: the
+ * server strips them so the answers never reach the browser.
+ *
+ * @typedef {object} Challenge
+ * @property {string} id
+ * @property {string} title
+ * @property {string} skill
+ * @property {string} [subSkill]
+ * @property {string} tier
+ * @property {string} [format]
+ * @property {string} [repo]
+ * @property {string} [file]
+ * @property {string} [reportedBy]
+ * @property {string} brief
+ * @property {string} vulnerable
+ * @property {number} attackCount
+ * @property {number} functionalCount
+ * @property {number} hintCount
+ */
+
+/**
+ * @typedef {object} RuleResult
+ * @property {string} id
+ * @property {boolean} pass
+ * @property {string|null} [evidence]
+ */
+
+/**
+ * @typedef {object} Suite
+ * @property {number} passed
+ * @property {number} total
+ * @property {RuleResult[]} results
+ */
+
+/**
+ * @typedef {object} Verdict
+ * @property {boolean} passed
+ * @property {{ message: string, line: number|null }|null} parseError
+ * @property {Suite} security
+ * @property {Suite} functional
+ * @property {string[]} failedRules
+ * @property {number} [attemptNo]
+ * @property {number} [xpAwarded]
+ * @property {boolean} [countedForMastery]
+ */
+
 const TOKEN_KEY = "cybershield.token";
 
 function authHeaders() {
@@ -21,7 +69,9 @@ async function call(path, options = {}) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    const err = new Error(body.error || `Request failed (${res.status})`);
+    const err = /** @type {Error & { status?: number }} */ (
+      new Error(body.error || `Request failed (${res.status})`)
+    );
     err.status = res.status;
     throw err;
   }
@@ -127,18 +177,34 @@ export const api = {
    * as an error rather than being quietly replaced by fixture data.
    */
   live: false,
-  probed: false,
+
+  /**
+   * The in-flight probe, cached so concurrent callers share one result.
+   *
+   * An earlier version cached a boolean `probed` flag and set it before the fetch
+   * resolved. A second caller then saw probed === true and returned the default
+   * `live: false` while the first request was still in the air -- so the app
+   * decided it was offline despite a healthy API. React's StrictMode double-invoke
+   * surfaced it immediately in development, but any two concurrent calls at
+   * startup would do the same in production.
+   *
+   * @type {Promise<boolean>|null}
+   */
+  _probe: null,
 
   async connect() {
-    if (this.probed) return this.live;
-    this.probed = true;
-    try {
-      const res = await fetch("/api/health", { signal: AbortSignal.timeout(1500) });
-      this.live = res.ok;
-    } catch {
-      this.live = false;
+    if (!this._probe) {
+      this._probe = (async () => {
+        try {
+          const res = await fetch("/api/health", { signal: AbortSignal.timeout(1500) });
+          this.live = res.ok;
+        } catch {
+          this.live = false;
+        }
+        return this.live;
+      })();
     }
-    return this.live;
+    return this._probe;
   },
 
   async next() {
@@ -173,6 +239,47 @@ export const api = {
 
   hint(index) {
     return FIXTURE_HINTS[index] ?? null;
+  },
+
+  /* ---------------------------------------------------------------- auth */
+
+  hasToken() {
+    try { return !!localStorage.getItem(TOKEN_KEY); } catch { return false; }
+  },
+
+  /** @param {string} token */
+  setToken(token) {
+    try { localStorage.setItem(TOKEN_KEY, token); } catch { /* private mode */ }
+  },
+
+  clearToken() {
+    try { localStorage.removeItem(TOKEN_KEY); } catch { /* private mode */ }
+  },
+
+  /**
+   * @param {"register"|"login"} mode
+   * @param {{ handle: string, password: string, studyCode?: string }} credentials
+   */
+  async authenticate(mode, credentials) {
+    const data = await call(`/api/auth/${mode}`, {
+      method: "POST",
+      body: JSON.stringify(credentials)
+    });
+    this.setToken(data.token);
+    return data;
+  },
+
+  async me() {
+    return call("/api/auth/me");
+  },
+
+  async logout() {
+    // Best effort: the session-ended event matters for the engagement metrics,
+    // but a failure here must not trap someone in a session they want to leave.
+    try {
+      if (this.live) await call("/api/auth/logout", { method: "POST" });
+    } catch { /* leaving anyway */ }
+    this.clearToken();
   },
 
   /**

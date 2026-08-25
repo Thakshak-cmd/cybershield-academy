@@ -91,7 +91,9 @@ function report(label, challenge, source) {
     return r;
   }
 
-  for (const [name, bucket] of [["security", r.security], ["functional", r.functional]]) {
+  /** @type {[string, { passed: number, total: number, results: any[] }][]} */
+  const buckets = [["security", r.security], ["functional", r.functional]];
+  for (const [name, bucket] of buckets) {
     const allOk = bucket.passed === bucket.total;
     console.log(`  ${name.padEnd(10)} ${allOk ? green(tally(bucket)) : red(tally(bucket))}`);
     for (const res of bucket.results) {

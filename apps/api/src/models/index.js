@@ -15,7 +15,13 @@ const UserSchema = new Schema({
   passwordHash: { type: String, required: true },
   subjectId: { type: String, required: true, unique: true, index: true },
   isStudyParticipant: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+
+  // Brute-force state, kept on the account rather than in process memory: a
+  // serverless invocation may be a fresh container, so a module-level counter
+  // resets constantly and protects nothing.
+  failedLogins: { type: Number, default: 0 },
+  lockedUntil: { type: Date, default: null }
 });
 
 /**

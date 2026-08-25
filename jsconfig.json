@@ -14,6 +14,12 @@
     "strictNullChecks": true,
     "strictFunctionTypes": true,
 
+    // Without this, checkJs walks into dependencies' own JavaScript and reports
+    // hundreds of errors in React's source, which is neither our code nor
+    // actionable.
+    "maxNodeModuleJsDepth": 0,
+
+    "jsx": "react-jsx",
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "types": ["node"]
@@ -22,8 +28,11 @@
     "types/**/*.d.ts",
     "packages/*/src/**/*.js",
     "packages/*/test/**/*.js",
+    "packages/*/bin/**/*.js",
     "apps/*/src/**/*.js",
-    "apps/*/test/**/*.js"
+    "apps/*/src/**/*.jsx",
+    "apps/*/test/**/*.js",
+    "apps/*/scripts/**/*.js"
   ],
-  "exclude": ["**/node_modules/**"]
+  "exclude": ["**/node_modules/**", "**/dist/**"]
 }

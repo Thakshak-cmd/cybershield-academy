@@ -10,7 +10,8 @@
     "seed": "node src/seed.js",
     "test": "node --test \"test/!(integration).test.js\"",
     "test:integration": "node --test --test-timeout=120000 \"test/integration.test.js\"",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "dev:memory": "node scripts/dev-server.js"
   },
   "dependencies": {
     "@cybershield/validator": "*",

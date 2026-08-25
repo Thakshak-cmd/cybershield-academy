@@ -3,6 +3,10 @@ import { Window, Pips } from "./components/Window.jsx";
 import { api } from "./api.js";
 import "./ChallengeScreen.css";
 
+/** @typedef {import("./api.js").Challenge} Challenge */
+/** @typedef {import("./api.js").Verdict} Verdict */
+/** @typedef {import("./api.js").RuleResult} RuleResult */
+
 /**
  * The core loop, on one screen.
  *
@@ -12,14 +16,14 @@ import "./ChallengeScreen.css";
  * screens would hide the tension that makes it one.
  */
 export function ChallengeScreen() {
-  const [challenge, setChallenge] = useState(null);
+  const [challenge, setChallenge] = useState(/** @type {Challenge|null} */ (null));
   const [reason, setReason] = useState("");
-  const [mastery, setMastery] = useState({});
+  const [mastery, setMastery] = useState(/** @type {Record<string, number>} */ ({}));
   const [patch, setPatch] = useState("");
-  const [verdict, setVerdict] = useState(null);
+  const [verdict, setVerdict] = useState(/** @type {Verdict|null} */ (null));
   const [busy, setBusy] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(/** @type {string|null} */ (null));
   const openedAt = useRef(Date.now());
 
   useEffect(() => {
@@ -71,7 +75,7 @@ export function ChallengeScreen() {
         badge={<span className="label">{challenge.repo} · {challenge.tier}</span>}
       >
         <div className="ticket">
-          <Portrait name={challenge.reportedBy} />
+          <Portrait name={challenge.reportedBy ?? "Unassigned"} />
           <div className="ticket__text">
             <h1 className="ticket__title">{challenge.title}</h1>
             <p className="ticket__brief">{challenge.brief}</p>
@@ -172,6 +176,7 @@ export function ChallengeScreen() {
   );
 }
 
+/** @param {{ name: string }} props */
 function Portrait({ name }) {
   // Placeholder until licensed art lands. Initials in a framed box read as a
   // character slot rather than a missing image, which a broken <img> would not.
@@ -185,6 +190,7 @@ function Portrait({ name }) {
   );
 }
 
+/** @param {{ source: string }} props */
 function CodeBlock({ source }) {
   const lines = source.split("\n");
   return (
@@ -199,6 +205,7 @@ function CodeBlock({ source }) {
   );
 }
 
+/** @param {{ results: RuleResult[] }} props */
 function RuleList({ results }) {
   return (
     <ul className="rules">
@@ -215,6 +222,7 @@ function RuleList({ results }) {
   );
 }
 
+/** @param {{ skill: string, value: number }} props */
 function MasteryBar({ skill, value }) {
   return (
     <div className="mastery">
@@ -227,6 +235,7 @@ function MasteryBar({ skill, value }) {
   );
 }
 
+/** @param {{ verdict: Verdict }} props */
 function Verdict({ verdict }) {
   const won = verdict.passed;
   return (

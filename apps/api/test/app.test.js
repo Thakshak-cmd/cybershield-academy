@@ -68,6 +68,26 @@ describe("middleware ordering", () => {
   });
 });
 
+describe("which routes are open", () => {
+  test("only register and login bypass authentication", async () => {
+    // Matching on an /auth/ prefix instead of an explicit list would leave
+    // /auth/me and /auth/logout unprotected, and nothing would look broken.
+    for (const path of ["/api/auth/me", "/api/auth/logout"]) {
+      const res = await fetch(base + path, { method: "POST" });
+      assert.equal(res.status, 401, `${path} must require a token`);
+    }
+  });
+
+  test("an unauthenticated request never reaches the database", async () => {
+    // MONGODB_URI is unset in this file, so anything touching the database
+    // surfaces as a 500. A 401 proves auth ran first.
+    for (const path of ["/api/next", "/api/challenges/sec-101/start"]) {
+      const res = await post(path);
+      assert.equal(res.status, 401, `${path} hit the database before checking the token`);
+    }
+  });
+});
+
 describe("error responses", () => {
   test("internal failures do not leak details to the caller", async () => {
     // With MONGODB_URI unset this reaches the connection middleware and fails.

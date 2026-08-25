@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.jsx";
 import "./theme.css";
 
-createRoot(document.getElementById("root")).render(
+const root = document.getElementById("root");
+if (!root) throw new Error('No #root element - index.html is missing its mount point');
+
+createRoot(root).render(
   <StrictMode>
     <App />
   </StrictMode>

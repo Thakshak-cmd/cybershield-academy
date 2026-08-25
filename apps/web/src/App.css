@@ -10,7 +10,8 @@
 .chrome__mark { font-size: 16px; font-weight: 600; color: var(--window-title); }
 .chrome__sep { color: var(--window-inner); }
 
-.chrome__switch { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.chrome__right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.chrome__switch { display: flex; align-items: center; gap: 6px; }
 
 .swatch {
   padding: 4px 10px;
@@ -38,4 +39,12 @@
   padding: 3px 8px;
   border: 1px dashed var(--breach);
   color: var(--breach);
+}
+
+.boot { padding: 64px; text-align: center; }
+
+.study {
+  padding: 3px 8px;
+  border: 1px solid var(--window-inner);
+  color: var(--ink-2);
 }
