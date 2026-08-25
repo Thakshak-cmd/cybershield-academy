@@ -1,0 +1,45 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+dist/
+build/
+.next/
+.vercel/
+*.tsbuildinfo
+
+# environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ml artefacts
+services/ml/models/*.pkl
+services/ml/models/*.pt
+services/ml/data/raw/
+!services/ml/data/raw/.gitkeep
+
+# study data — NEVER commit participant data (ethics/GDPR)
+data/participants/
+data/study/
+*.participant.json
+
+# logs / os
+*.log
+npm-debug.log*
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
