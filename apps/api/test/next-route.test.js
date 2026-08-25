@@ -17,12 +17,19 @@ const fakeMl = {
     if (mlBehaviour === "empty") return null;
     if (mlBehaviour === "unknown") {
       return { challengeId: "does-not-exist", skill: "sqli", pMastery: 0.4,
-               policy: /** @type {const} */ ("bkt-adaptive"), reason: "r" };
+               policy: /** @type {const} */ ("bkt-adaptive"), reason: "r",
+               mastery: /** @type {Record<string, number>} */ ({ sqli: 0.4 }),
+               unlocked: [], capstoneUnlocked: false };
     }
     return {
       challengeId: "sec-104", skill: "sqli", pMastery: 0.42,
-      policy: /** @type {const} */ ("bkt-adaptive"), reason: "sqli is weakest at 0.42"
+      policy: /** @type {const} */ ("bkt-adaptive"), reason: "sqli is weakest at 0.42",
+      mastery: /** @type {Record<string, number>} */ ({ sqli: 0.42, xss: 0.15, csrf: 0.15 }),
+      unlocked: ["sec-104"], capstoneUnlocked: false
     };
+  },
+  async mastery() {
+    return { mastery: { sqli: 0.42 }, unlocked: [], capstoneUnlocked: false };
   }
 };
 
@@ -64,7 +71,8 @@ before(async () => {
       appended.push(...events);
       return events.map((e, i) => ({ ...e, seq: i + 1 }));
     },
-    findChallenge: async id => (id === CHALLENGE.id ? { ...CHALLENGE } : null)
+    findChallenge: async id => (id === CHALLENGE.id ? { ...CHALLENGE } : null),
+    loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] })
   }));
   app.use((err, _req, res, _next) => res.status(500).json({ error: err.message }));
 
@@ -170,10 +178,13 @@ describe("POST /api/challenges/:id/start", () => {
   });
 });
 
+/** @type {import("../src/ml-client.js").LearnerState} */
+const EMPTY_STATE = { observations: [], candidates: [], cleared: [], unlocked: [] };
+
 describe("ml client", () => {
   test("refuses to guess a base URL", async () => {
     delete process.env.ML_SERVICE_URL;
-    await assert.rejects(() => createMlClient().recommend("s1"), /ML_SERVICE_URL is not set/);
+    await assert.rejects(() => createMlClient().recommend(EMPTY_STATE), /ML_SERVICE_URL is not set/);
   });
 
   test("204 means no content left, not a failure", async () => {
@@ -181,7 +192,7 @@ describe("ml client", () => {
       baseUrl: "http://ml.test",
       fetchImpl: async () => new Response(null, { status: 204 })
     });
-    assert.equal(await client.recommend("s1"), null);
+    assert.equal(await client.recommend(EMPTY_STATE), null);
   });
 
   test("a slow service times out rather than hanging the request", async () => {
@@ -189,14 +200,38 @@ describe("ml client", () => {
       baseUrl: "http://ml.test",
       timeoutMs: 20,
       fetchImpl: (_url, opts) => new Promise((_resolve, reject) => {
-        opts.signal.addEventListener("abort", () => {
+        /** @type {AbortSignal} */ (opts.signal).addEventListener("abort", () => {
           const e = new Error("aborted");
           e.name = "AbortError";
           reject(e);
         });
       })
     });
-    await assert.rejects(() => client.recommend("s1"), /did not respond within 20ms/);
+    await assert.rejects(() => client.recommend(EMPTY_STATE), /did not respond within 20ms/);
+  });
+
+  test("sends the learner state as a POST body", async () => {
+    /** @type {{ method: string|undefined, body: any }[]} */
+    const calls = [];
+    const client = createMlClient({
+      baseUrl: "http://ml.test",
+      fetchImpl: async (_url, opts) => {
+        calls.push({ method: opts.method, body: JSON.parse(String(opts.body)) });
+        return Response.json({ challenge_id: "a", skill: "sqli", p_mastery: 0.2,
+                               policy: "bkt-adaptive", reason: "r", mastery: {}, unlocked: [] });
+      }
+    });
+    await client.recommend({
+      observations: [{ skill: "sqli", correct: true }],
+      candidates: [{ challenge_id: "a", skill: "sqli" }],
+      cleared: ["b"], unlocked: ["a"]
+    });
+    assert.equal(calls.length, 1, "fetchImpl must have been called exactly once");
+    assert.equal(calls[0].method, "POST");
+    // The service is stateless, so everything it needs must be in the body.
+    assert.deepEqual(calls[0].body.observations, [{ skill: "sqli", correct: true }]);
+    assert.deepEqual(calls[0].body.cleared, ["b"]);
+    assert.deepEqual(calls[0].body.unlocked, ["a"]);
   });
 
   test("maps the service's snake_case payload to the API's shape", async () => {
@@ -204,10 +239,11 @@ describe("ml client", () => {
       baseUrl: "http://ml.test",
       fetchImpl: async () => Response.json({
         challenge_id: "xss.a", skill: "xss", p_mastery: 0.31,
-        policy: "bkt-adaptive", reason: "xss is weakest at 0.31"
+        policy: "bkt-adaptive", reason: "xss is weakest at 0.31",
+        mastery: { xss: 0.31 }, unlocked: ["xss.a"], capstone_unlocked: false
       })
     });
-    const rec = await client.recommend("s1");
+    const rec = await client.recommend(EMPTY_STATE);
     assert.ok(rec, "a 200 response must produce a recommendation");
     assert.equal(rec.challengeId, "xss.a");
     assert.equal(rec.pMastery, 0.31);

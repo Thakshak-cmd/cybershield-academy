@@ -1,8 +1,8 @@
 // @ts-check
 import { Router } from "express";
 import { SCHEMA_VERSION } from "@cybershield/shared";
-import { Challenge } from "../models/index.js";
-import { append as defaultAppend } from "../telemetry.js";
+import { Challenge, Progress } from "../models/index.js";
+import { append as defaultAppend, bktObservationsFor as defaultObservations } from "../telemetry.js";
 import { createMlClient, MlServiceError } from "../ml-client.js";
 
 /** @typedef {Record<string, any>} LeanChallenge */
@@ -18,7 +18,8 @@ import { createMlClient, MlServiceError } from "../ml-client.js";
  * @param {{
  *   mlClient?: import("../ml-client.js").MlClient,
  *   append?: typeof defaultAppend,
- *   findChallenge?: (id: string) => Promise<LeanChallenge|null>
+ *   findChallenge?: (id: string) => Promise<LeanChallenge|null>,
+ *   loadState?: (subjectId: string) => Promise<import("../ml-client.js").LearnerState>
  * }} [deps]
  */
 export function createNextRouter(deps = {}) {
@@ -27,6 +28,7 @@ export function createNextRouter(deps = {}) {
   const append = deps.append ?? defaultAppend;
   const findChallenge = deps.findChallenge ?? (async id =>
     /** @type {LeanChallenge | null} */ (await Challenge.findOne({ id }).lean()));
+  const loadState = deps.loadState ?? defaultLoadState;
 
   /**
    * GET /api/next
@@ -44,7 +46,7 @@ export function createNextRouter(deps = {}) {
 
       let rec;
       try {
-        rec = await ml.recommend(subjectId);
+        rec = await ml.recommend(await loadState(subjectId));
       } catch (err) {
         if (err instanceof MlServiceError) {
           // Distinguished from a 500 so the client can say something true: the
@@ -89,7 +91,9 @@ export function createNextRouter(deps = {}) {
         challenge: publicChallenge(challenge),
         pMastery: rec.pMastery,
         policy: rec.policy,
-        reason: rec.reason
+        reason: rec.reason,
+        mastery: rec.mastery,
+        capstoneUnlocked: rec.capstoneUnlocked
       });
     } catch (err) {
       next(err);
@@ -133,6 +137,43 @@ export function createNextRouter(deps = {}) {
   });
 
   return router;
+}
+
+/**
+ * Gather everything the stateless ML service needs to answer.
+ *
+ * Mastery is not stored and incremented; it is recomputed by replaying the log.
+ * A stored value that drifted from the log would be a silent inconsistency
+ * between the model and the evidence it claims to summarise, and replaying a few
+ * dozen scalar updates costs nothing at this scale.
+ *
+ * @param {string} subjectId
+ * @returns {Promise<import("../ml-client.js").LearnerState>}
+ */
+async function defaultLoadState(subjectId) {
+  const [observations, catalogue, progress] = await Promise.all([
+    defaultObservations(subjectId),
+    /** @type {Promise<LeanChallenge[]>} */ (
+      Challenge.find({}, { id: 1, skill: 1, tier: 1, masteryRequired: 1, isDrill: 1, isBoss: 1, requires: 1 }).lean()
+    ),
+    /** @type {Promise<{ solvedChallenges?: string[], unlockedNodes?: string[] } | null>} */ (
+      Progress.findOne({ subjectId }, { solvedChallenges: 1, unlockedNodes: 1 }).lean()
+    )
+  ]);
+
+  return {
+    observations,
+    candidates: catalogue.map(c => ({
+      challenge_id: c.id,
+      skill: c.skill,
+      mastery_required: c.masteryRequired ?? 0,
+      is_drill: !!c.isDrill,
+      is_boss: !!c.isBoss,
+      requires: c.requires ?? null
+    })),
+    cleared: progress?.solvedChallenges ?? [],
+    unlocked: progress?.unlockedNodes ?? []
+  };
 }
 
 /**

@@ -46,3 +46,5 @@ npm-debug.log*
 
 # python
 services/ml/.pytest_cache/
+services/ml/.venv/
+.mongodb-binaries/

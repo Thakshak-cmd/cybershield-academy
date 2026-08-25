@@ -1,0 +1,52 @@
+{
+  "id": "sec-101",
+  "title": "The product search box returns other people's orders",
+  "skill": "sqli",
+  "subSkill": "sqli.parameterised-query",
+  "tier": "beginner",
+  "format": "patch",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "file": "routes/search.js",
+  "reportedBy": "Dan (QA)",
+
+  "masteryRequired": 0.0,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": null,
+
+  "brief": "QA typed a quote into the search box and the page filled with rows from a table search should never touch. This is the gentlest version of the problem: one input, one query, no login involved.",
+
+  "vulnerable": "app.get('/api/search', async (req, res) => {\n  const { term } = req.query;\n\n  const sql = `SELECT id, name, price FROM products\n     WHERE name LIKE '%${term}%'`;\n\n  const rows = await db.query(sql);\n  res.json(rows);\n});",
+
+  "meta": {
+    "dbMethod": "query",
+    "inputNames": ["term"],
+    "expectedTable": "products"
+  },
+
+  "rules": [
+    "sqli.no-string-interpolation",
+    "sqli.uses-parameterised-query",
+    "input.preserved-verbatim",
+    "sql.queries-expected-table"
+  ],
+
+  "attackSuite": [
+    { "payload": "' UNION SELECT id, email, 0 FROM users --", "label": "Reads a table it should not" },
+    { "payload": "%' OR '1'='1", "label": "Returns the entire catalogue" }
+  ],
+
+  "functionalSuite": [
+    { "value": "laptop stand", "label": "Ordinary search" },
+    { "value": "O'Neill", "label": "Brand name with an apostrophe" }
+  ],
+
+  "hints": [
+    "The quote the tester typed ended the string early. Everything after it was read as instructions.",
+    "Stripping the quote would break the O'Neill listing. What lets the database keep the value and the query separate?",
+    "Pass the LIKE pattern as a bound parameter: db.query(sql, [`%${term}%`])."
+  ],
+
+  "xp": { "firstAttempt": 80, "withHints": 40, "retry": 25 }
+}

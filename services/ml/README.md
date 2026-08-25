@@ -74,7 +74,27 @@ A fourth mistake was in the test rather than the policy: measuring drill share o
 a fixed step count reported content exhaustion, not policy behaviour. It read 68%
 across three different policies before that became obvious.
 
-## Still to build
+## The HTTP layer
 
-The HTTP layer. `fastapi` and `uvicorn` are not installed in this environment, and
-nothing untested is committed here.
+```
+python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+./.venv/bin/uvicorn app:app --port 8811
+```
+
+or `npm run ml` from the repo root.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Liveness. Depends on nothing. |
+| `POST /mastery` | Current mastery per skill, and what it unlocks |
+| `POST /recommend` | The next challenge, or `204` when nothing is open |
+
+**Stateless by design.** The service holds no database and no session: the caller
+sends the observation history and the challenge catalogue, and gets mastery back.
+The Node API already owns the event log, so a database here would mean two
+components reading the same log with two implementations of "which attempts
+count" -- and they would drift silently, both continuing to return plausible
+numbers. This service is authoritative about the *model* and nothing else.
+
+`204` on `/recommend` means the learner has exhausted the open content. That is a
+real answer, not a failure, and the caller distinguishes the two.

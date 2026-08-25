@@ -67,3 +67,29 @@ export async function countHints(subjectId, challengeId) {
     "payload.challengeId": challengeId
   });
 }
+
+/**
+ * The learner's BKT observations, oldest first.
+ *
+ * Filtered to attempts that count as evidence about latent skill -- unaided first
+ * attempts only. The `countsForBkt` flag is stamped at write time by
+ * attempt-logic, so the definition lives in one place rather than being
+ * re-derived by every reader.
+ *
+ * Ordered by seq, not by timestamp: clocks skew, millisecond values collide, and
+ * BKT is a sequential model, so the wrong order gives the wrong mastery curve.
+ *
+ * @param {string} subjectId
+ * @returns {Promise<{ skill: string, correct: boolean }[]>}
+ */
+export async function bktObservationsFor(subjectId) {
+  const rows = await Event.find(
+    { subjectId, type: "challenge.attempted", "payload.countsForBkt": true },
+    { "payload.skill": 1, "payload.correct": 1, seq: 1 }
+  ).sort({ seq: 1 }).lean();
+
+  return rows.map(r => ({
+    skill: /** @type {any} */ (r).payload.skill,
+    correct: !!(/** @type {any} */ (r).payload.correct)
+  }));
+}

@@ -66,6 +66,14 @@ const ChallengeSchema = new Schema({
   reportedBy: String,
   brief: String,
   vulnerable: String,
+
+  // Skill-tree placement. The policy gates on these, so they belong with the
+  // challenge rather than in a separate tree definition that could drift from it.
+  masteryRequired: { type: Number, default: 0 },
+  isDrill: { type: Boolean, default: false },
+  isBoss: { type: Boolean, default: false },
+  requires: { type: String, default: null },
+
   meta: { type: Schema.Types.Mixed, default: {} },
   rules: { type: [String], default: [] },
   attackSuite: { type: [Schema.Types.Mixed], default: [] },
