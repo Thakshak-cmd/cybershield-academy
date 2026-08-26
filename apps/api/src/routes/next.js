@@ -4,6 +4,7 @@ import { SCHEMA_VERSION } from "@cybershield/shared";
 import { Challenge, Progress } from "../models/index.js";
 import { append as defaultAppend, bktObservationsFor as defaultObservations } from "../telemetry.js";
 import { validateStages } from "@cybershield/validator";
+import { BADGES } from "../../../../content/badges.js";
 import { createMlClient, MlServiceError } from "../ml-client.js";
 
 /** @typedef {Record<string, any>} LeanChallenge */
@@ -270,6 +271,9 @@ export function createNextRouter(deps = {}) {
         cleared: state.cleared,
         xp: progress?.xp ?? 0,
         badges: progress?.badges ?? [],
+        allBadges: BADGES.map(b => ({
+          id: b.id, name: b.name, description: b.description, art: b.art, skill: b.skill
+        })),
         degraded,
         nodes: state.candidates.map(c => ({
           id: c.challenge_id,

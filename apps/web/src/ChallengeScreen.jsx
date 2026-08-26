@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Window, Pips } from "./components/Window.jsx";
+import { Reward } from "./components/Reward.jsx";
+import { Portrait } from "./components/Portrait.jsx";
 import { api } from "./api.js";
 import "./ChallengeScreen.css";
 
@@ -53,6 +55,22 @@ export function ChallengeScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  /** Reset for whatever the adaptive layer serves next, without a page reload. */
+  async function nextAssignment() {
+    setVerdict(null);
+    setHintsShown(0);
+    setChallenge(null);
+    const next = await api.next();
+    if (!next.challenge) return;
+    await api.start(next.challenge.id);
+    setChallenge(next.challenge);
+    setReason(next.reason);
+    setMastery(next.mastery || {});
+    setPatch(next.challenge.vulnerable);
+    openedAt.current = Date.now();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function takeHint() {
@@ -171,21 +189,16 @@ export function ChallengeScreen() {
         </aside>
       </div>
 
-      {verdict && <Verdict verdict={verdict} />}
-    </div>
-  );
-}
-
-/** @param {{ name: string }} props */
-function Portrait({ name }) {
-  // Placeholder until licensed art lands. Initials in a framed box read as a
-  // character slot rather than a missing image, which a broken <img> would not.
-  const initials = name.replace(/\(.*\)/, "").trim().split(/\s+/)
-    .map(w => w[0]).join("").slice(0, 2).toUpperCase();
-  return (
-    <div className="portrait">
-      <div className="portrait__frame pixel">{initials}</div>
-      <span className="label portrait__name">{name}</span>
+      {verdict?.passed ? (
+        <Reward
+          xp={verdict.xpAwarded ?? 0}
+          badges={verdict.newBadges ?? []}
+          firstAttempt={verdict.attemptNo === 1 && hintsShown === 0}
+          onDone={nextAssignment}
+        />
+      ) : verdict ? (
+        <Verdict verdict={verdict} />
+      ) : null}
     </div>
   );
 }

@@ -15,6 +15,18 @@
       "notes": "SVG and CSS. Deliberately not a creature sprite - see docs/game-design.md section 7."
     },
     {
+      "path": "apps/web/src/components/BadgeArt.jsx",
+      "description": "Six badge emblems: patch, database, browser, forgery, star, crown",
+      "author": "Thakshak Chintakrindi",
+      "notes": "Drawn at 64 rather than scaling the 18px icons, which lose their weight when enlarged."
+    },
+    {
+      "path": "apps/web/src/components/Portrait.jsx",
+      "description": "Character portraits: Priya, Dan, Marcus, and the learner",
+      "author": "Thakshak Chintakrindi",
+      "notes": "Flat shapes distinguished by silhouette, since that is what reads at 56px. Skin tones derive from palette tokens via color-mix rather than fixed hex."
+    },
+    {
       "path": "apps/web/src/components/Window.css",
       "description": "JRPG window chrome: double rule, corner pips",
       "author": "Thakshak Chintakrindi",

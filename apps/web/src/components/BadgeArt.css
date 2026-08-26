@@ -1,0 +1,31 @@
+.badgeart { display: block; flex: 0 0 auto; }
+
+.badgeart__ground { fill: var(--surface-2); transition: fill .4s ease; }
+.badgeart__rim { stroke: var(--window-inner); stroke-width: 2.5; transition: stroke .4s ease; }
+.badgeart__device { stroke: var(--muted); stroke-width: 2.2; transition: stroke .4s ease; }
+
+/* Earned: the shield takes the accent metal of the window frames, so a badge
+   reads as part of the same world as the chrome around it. */
+.badgeart--earned .badgeart__ground { fill: var(--accent-soft); }
+.badgeart--earned .badgeart__rim    { stroke: var(--window-edge); }
+.badgeart--earned .badgeart__device { stroke: var(--accent); }
+
+.badgeart--locked { opacity: .4; }
+.badgeart--locked .badgeart__device { stroke-dasharray: 3 3; }
+
+/* The unlock. Deliberately one movement rather than several: a badge that
+   bounces, spins and flashes reads as a notification, not a reward. */
+.badgeart--flash {
+  animation: badge-strike .9s cubic-bezier(.2, .9, .3, 1);
+  transform-origin: 50% 50%;
+}
+
+@keyframes badge-strike {
+  0%   { transform: scale(.4) rotate(-12deg); opacity: 0; }
+  55%  { transform: scale(1.12) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badgeart--flash { animation: none; }
+}

@@ -53,6 +53,7 @@
  * @property {number} [attemptNo]
  * @property {number} [xpAwarded]
  * @property {boolean} [countedForMastery]
+ * @property {string[]} [newBadges]  ids earned by this attempt, in award order
  */
 
 const TOKEN_KEY = "cybershield.token";
@@ -229,7 +230,8 @@ export const api = {
   async attempt(challengeId, source, durationMs) {
     if (!(await this.connect())) {
       const verdict = fixtureVerdict(source);
-      return { ...verdict, attemptNo: 1, xpAwarded: verdict.passed ? 80 : 0, countedForMastery: true };
+      return { ...verdict, attemptNo: 1, xpAwarded: verdict.passed ? 80 : 0,
+               countedForMastery: true, newBadges: verdict.passed ? ["first-patch"] : [] };
     }
     return call(`/api/challenges/${challengeId}/attempt`, {
       method: "POST",

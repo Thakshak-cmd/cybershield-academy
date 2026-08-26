@@ -1,0 +1,52 @@
+.portrait {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.portrait__frame {
+  border: 2px solid var(--window-edge);
+  background: var(--surface-2);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.portrait__body { fill: var(--window-inner); }
+
+/* Two skin tones, both derived from palette tokens rather than fixed hex, so the
+   portraits sit inside the world's colour rather than on top of it. */
+.portrait__skin--warm { fill: color-mix(in srgb, var(--accent) 40%, var(--surface)); }
+.portrait__skin--cool { fill: color-mix(in srgb, var(--ink-2) 28%, var(--surface)); }
+
+.portrait__eyes {
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: .75;
+}
+
+.portrait__hair { fill: var(--window-title); opacity: .9; }
+
+.portrait__accent {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.portrait__caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  max-width: 84px;
+  text-align: center;
+}
+
+.portrait__name { font-size: 12px; font-weight: 600; color: var(--ink-2); line-height: 1.25; }
+.portrait__role { line-height: 1.3; }

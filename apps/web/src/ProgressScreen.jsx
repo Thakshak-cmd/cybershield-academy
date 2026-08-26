@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Window } from "./components/Window.jsx";
 import { SkillTree } from "./components/SkillTree.jsx";
 import { Icon } from "./components/Icon.jsx";
+import { BadgeArt } from "./components/BadgeArt.jsx";
 import { SKILL_ICONS } from "./components/icons.js";
 import { api } from "./api.js";
 import "./ProgressScreen.css";
@@ -104,6 +105,24 @@ export function ProgressScreen({ onOpenChallenge }) {
           </p>
         </Window>
       </div>
+
+      <Window
+        title="Commendations"
+        badge={<span className="label">{data.badges.length} of {(data.allBadges ?? []).length}</span>}
+      >
+        <div className="badgecase">
+          {(data.allBadges ?? []).map(b => {
+            const earned = data.badges.includes(b.id);
+            return (
+              <div className={earned ? "badgeslot badgeslot--earned" : "badgeslot"} key={b.id}>
+                <BadgeArt art={b.art} earned={earned} size={58} title={b.name} />
+                <span className="badgeslot__name pixel">{b.name}</span>
+                <span className="badgeslot__desc">{b.description}</span>
+              </div>
+            );
+          })}
+        </div>
+      </Window>
 
       <Window title="Skill tree" badge={<span className="label">{data.cleared.length} cleared</span>}>
         <SkillTree

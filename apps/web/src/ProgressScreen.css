@@ -73,3 +73,25 @@
 .capstone__gate--open { color: var(--breach); font-weight: 600; }
 
 .stat__icon { color: var(--muted); }
+
+/* ---------- commendations ---------- */
+
+.badgecase {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 18px;
+}
+
+.badgeslot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.badgeslot__name { font-size: 12.5px; color: var(--muted); }
+.badgeslot__desc { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+
+.badgeslot--earned .badgeslot__name { color: var(--window-title); }
+.badgeslot--earned .badgeslot__desc { color: var(--ink-2); }
