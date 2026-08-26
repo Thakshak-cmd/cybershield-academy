@@ -1,0 +1,7 @@
+{
+  "name": "@cybershield/content",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Challenge definitions and the reference patches that verify their rules."
+}

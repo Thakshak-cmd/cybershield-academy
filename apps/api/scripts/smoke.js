@@ -27,6 +27,9 @@ import { dirname, join } from "node:path";
 const ML_URL = process.env.ML_SERVICE_URL || "http://localhost:8811";
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
+/** Filled in after seeding: every challenge a learner at the prior can reach. */
+let ENTRY_CHALLENGES = [];
+
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const ok = s => c("32", s);
 const bad = s => c("31", s);
@@ -66,6 +69,13 @@ async function main() {
   const seeded = await seed();
   console.log(`${ok("PASS")} seeded ${seeded.length} challenge(s): ${seeded.join(", ")}`);
 
+  // Whatever the policy picks first, the rest of this walk drives sec-101,
+  // because the patches below are written against that challenge.
+  const entry = await Challenge.find(
+    { masteryRequired: { $lte: 0.15 }, requires: null }, { id: 1 }
+  ).lean();
+  ENTRY_CHALLENGES = entry.map(c => /** @type {any} */ (c).id);
+
   const server = createApp().listen(0);
   await new Promise(r => server.once("listening", r));
   const port = /** @type {import("node:net").AddressInfo} */ (server.address()).port;
@@ -82,8 +92,14 @@ async function main() {
   const nextRes = await fetch(`${base}/api/next`, { headers: auth });
   const next = await nextRes.json();
   check("responds 200", nextRes.status === 200, `got ${nextRes.status}`);
-  check("recommends the entry challenge", next.challenge?.id === "sec-101",
-        `got ${next.challenge?.id}`);
+  // Deliberately not a specific id. Which skill comes first depends on the
+  // catalogue and on how ties at the starting prior break, and both change every
+  // time a challenge is authored. Asserting an id here made the smoke test fail
+  // on content additions rather than on regressions.
+  const entryIds = ENTRY_CHALLENGES;
+  check("recommends a challenge a new learner can take",
+        entryIds.includes(next.challenge?.id),
+        `got ${next.challenge?.id}, expected one of ${entryIds.join(", ")}`);
   check("carries the model's reasoning", !!next.reason, dim(`"${next.reason}"`));
   check("reports mastery", typeof next.mastery?.sqli === "number", dim(`sqli=${next.mastery?.sqli}`));
   check("hides the rules", !("rules" in (next.challenge ?? {})));
@@ -148,9 +164,18 @@ async function main() {
 
   const { followRate, deriveFollowed } = await import("@cybershield/shared");
   const followed = deriveFollowed(/** @type {any} */ (events));
-  check("the recommendation was followed", followed[0]?.followed === true,
-        dim(`recommended ${followed[0]?.recommended}, started ${followed[0]?.started}`));
-  check("follow rate computes", followRate(/** @type {any} */ (events)) === 1);
+  const pair = followed[0];
+
+  // The mechanism, not a particular outcome. This walk deliberately opens
+  // sec-101 whatever the policy suggested, so `followed` is often false -- and
+  // recording that accurately is exactly what the measurement is for.
+  check("follow-through pairs the recommendation with what was opened",
+        pair?.started === "sec-101" && pair?.followed === (pair.recommended === pair.started),
+        dim(`recommended ${pair?.recommended}, started ${pair?.started}, followed ${pair?.followed}`));
+
+  const rate = followRate(/** @type {any} */ (events));
+  check("follow rate computes", Number.isFinite(rate) && rate >= 0 && rate <= 1,
+        dim(String(rate)));
 
   // --- 6. mastery moved --------------------------------------------------
   console.log(bold("\n6. GET /api/next again"));

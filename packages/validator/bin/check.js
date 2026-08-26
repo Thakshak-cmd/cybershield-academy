@@ -18,6 +18,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validate } from "../src/index.js";
+import { REFERENCE_PATCHES } from "../../../content/reference-patches.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const CONTENT = join(here, "../../../content/challenges");
@@ -28,34 +29,6 @@ const red = s => c("31", s);
 const green = s => c("32", s);
 const dim = s => c("2", s);
 const bold = s => c("1", s);
-
-/** Reference patches, so `check.js <id>` has something to score out of the box. */
-const REFERENCE = {
-  "sec-104": {
-    "strip single quotes": `
-      app.post('/api/login', async (req, res) => {
-        const { email, password } = req.body;
-        const safe = email.replace(/'/g, '');
-        const sql = \`SELECT id, role FROM users WHERE email = '\${safe}'\`;
-        const [user] = await db.query(sql);
-      });`,
-    "blocklist SQL keywords": `
-      app.post('/api/login', async (req, res) => {
-        const { email, password } = req.body;
-        if (/\\b(OR|UNION|SELECT|--)\\b/i.test(email)) {
-          return res.status(400).send('Invalid input');
-        }
-        const sql = \`SELECT id, role FROM users WHERE email = '\${email}'\`;
-        const [user] = await db.query(sql);
-      });`,
-    "parameterised query": `
-      app.post('/api/login', async (req, res) => {
-        const { email, password } = req.body;
-        const sql = 'SELECT id, role FROM users WHERE email = ? AND password_hash = ?';
-        const [user] = await db.query(sql, [email, sha256(password)]);
-      });`
-  }
-};
 
 function loadChallenge(id) {
   try {
@@ -124,18 +97,29 @@ if (file) {
   const r = report(file === "-" ? "stdin" : file, challenge, source);
   process.exit(r.passed ? 0 : 1);
 } else {
-  const refs = REFERENCE[challengeId];
+  const refs = REFERENCE_PATCHES[challengeId];
   if (!refs) {
     console.error(`\nNo reference patches for ${challengeId}. Pass a file to score.`);
     process.exit(1);
   }
-  console.log(dim("\nScoring reference patches. Exactly one should pass."));
-  const results = Object.entries(refs).map(([label, src]) => report(label, challenge, src));
-  const passing = results.filter(r => r.passed).length;
+
+  console.log(dim("\nScoring reference patches against what each should do."));
+  let wrong = 0;
+
+  for (const patch of refs) {
+    const r = report(patch.label, challenge, patch.source);
+    const expected = patch.expect === "pass" ? [] : [...patch.expect].sort();
+    const actual = [...r.failedRules].sort();
+    if (JSON.stringify(expected) !== JSON.stringify(actual)) {
+      wrong++;
+      console.log(`  ${red("!")} expected to fail: ${expected.join(", ") || "nothing"}`);
+    }
+  }
+
   console.log(
-    passing === 1
-      ? `\n${green("OK")} ${passing} of ${results.length} passed, as expected.`
-      : `\n${red("PROBLEM")} ${passing} of ${results.length} passed; exactly 1 should.`
+    wrong === 0
+      ? `\n${green("OK")} all ${refs.length} reference patches scored as intended.`
+      : `\n${red("PROBLEM")} ${wrong} of ${refs.length} scored differently than expected.`
   );
-  process.exit(passing === 1 ? 0 : 1);
+  process.exit(wrong === 0 ? 0 : 1);
 }

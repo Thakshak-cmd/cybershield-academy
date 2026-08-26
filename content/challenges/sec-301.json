@@ -1,0 +1,49 @@
+{
+  "id": "sec-301",
+  "title": "A customer's delivery address changed while they were reading a blog",
+  "skill": "csrf",
+  "subSkill": "csrf.token",
+  "tier": "beginner",
+  "format": "patch",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "file": "routes/account.js",
+  "reportedBy": "Priya (Support)",
+
+  "masteryRequired": 0.0,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": null,
+
+  "brief": "A customer says their delivery address was changed without them touching it. They had Aurora open in another tab. Any page on the internet can make their browser send this request, and their session cookie rides along.",
+
+  "vulnerable": "app.post('/api/account/address', async (req, res) => {\n  const { line1, postcode } = req.body;\n\n  await updateAddress(req.session.userId, { line1, postcode });\n\n  res.json({ ok: true });\n});",
+
+  "meta": {
+    "inputNames": ["line1", "postcode"],
+    "expectedCall": "updateAddress"
+  },
+
+  "rules": [
+    "csrf.verifies-token",
+    "csrf.not-header-only",
+    "csrf.still-performs-the-action"
+  ],
+
+  "attackSuite": [
+    { "payload": "<form action=\"https://aurora.shop/api/account/address\" method=\"POST\"> auto-submitted", "label": "A form on someone else's site" },
+    { "payload": "fetch(url, { method: 'POST', credentials: 'include' })", "label": "A script on someone else's site" }
+  ],
+
+  "functionalSuite": [
+    { "value": "A customer updating their own address from the account page", "label": "The real thing still works" }
+  ],
+
+  "hints": [
+    "The browser is behaving correctly. It sends cookies for aurora.shop whenever anything asks it to.",
+    "The attacking page can make the browser send a request. What can it not do? It cannot read anything Aurora sent back earlier.",
+    "Issue a token into the session, require it in the request body, and compare the two before acting."
+  ],
+
+  "xp": { "firstAttempt": 80, "withHints": 40, "retry": 25 }
+}
