@@ -32,7 +32,8 @@
     "apps/*/src/**/*.js",
     "apps/*/src/**/*.jsx",
     "apps/*/test/**/*.js",
-    "apps/*/scripts/**/*.js"
+    "apps/*/scripts/**/*.js",
+    "scripts/**/*.mjs"
   ],
   "exclude": ["**/node_modules/**", "**/dist/**"]
 }

@@ -11,7 +11,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "npm run dev --workspaces --if-present",
+    "dev": "node scripts/dev.mjs",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "tsc -p jsconfig.json",
@@ -23,7 +23,8 @@
     "ml": "services/ml/.venv/bin/uvicorn app:app --port 8811 --app-dir services/ml --loop asyncio",
     "ml:test": "services/ml/.venv/bin/python -m pytest services/ml -q",
     "web": "npm run dev --workspace @cybershield/web",
-    "dev:api": "npm run dev:memory --workspace @cybershield/api"
+    "dev:api": "npm run dev:memory --workspace @cybershield/api",
+    "start": "node scripts/dev.mjs"
   },
   "devDependencies": {
     "@types/express": "^4.17.25",

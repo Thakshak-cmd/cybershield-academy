@@ -21,17 +21,19 @@ services/ml/   BKT model, sequencing policy, evaluation, FastAPI service
 
 ## Running it
 
-Two processes, in separate terminals. The BKT service:
-
 ```
-npm run ml
+npm run dev
 ```
 
-and the API, which needs `.env.local` (copy `.env.example`):
+Starts the BKT service, the API and the front end together, waits for each to
+answer, and prints the URL. Ctrl+C stops all three.
 
-```
-npm run dev --workspace @cybershield/api
-```
+The database is in-process and discarded on exit, so no Atlas cluster is needed
+to develop against — every run starts from a freshly seeded database. Register a
+handle at http://localhost:5173 to begin; the study enrolment code is
+`AURORA-2026`.
+
+To run a service on its own: `npm run ml`, `npm run dev:api`, `npm run web`.
 
 ## Verifying it
 
