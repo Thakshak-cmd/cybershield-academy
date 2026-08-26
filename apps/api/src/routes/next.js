@@ -19,7 +19,9 @@ import { createMlClient, MlServiceError } from "../ml-client.js";
  *   mlClient?: import("../ml-client.js").MlClient,
  *   append?: typeof defaultAppend,
  *   findChallenge?: (id: string) => Promise<LeanChallenge|null>,
- *   loadState?: (subjectId: string) => Promise<import("../ml-client.js").LearnerState>
+ *   loadState?: (subjectId: string) => Promise<import("../ml-client.js").LearnerState>,
+ *   loadProgress?: (subjectId: string) => Promise<{ xp?: number, badges?: string[] }|null>,
+ *   loadTitles?: (ids: string[]) => Promise<Record<string, { title: string, tier: string }>>
  * }} [deps]
  */
 export function createNextRouter(deps = {}) {
@@ -29,6 +31,8 @@ export function createNextRouter(deps = {}) {
   const findChallenge = deps.findChallenge ?? (async id =>
     /** @type {LeanChallenge | null} */ (await Challenge.findOne({ id }).lean()));
   const loadState = deps.loadState ?? defaultLoadState;
+  const loadProgress = deps.loadProgress ?? defaultLoadProgress;
+  const loadTitles = deps.loadTitles ?? defaultLoadTitles;
 
   /**
    * GET /api/next
@@ -136,7 +140,88 @@ export function createNextRouter(deps = {}) {
     }
   });
 
+  /**
+   * GET /api/progress
+   *
+   * Everything the character sheet and skill tree render: mastery per skill, which
+   * nodes are open, which are cleared, and the catalogue they sit in.
+   *
+   * The tree shape comes from the same challenge documents the policy gates on, so
+   * there is no second definition of the tree to drift out of step with the first.
+   */
+  router.get("/progress", async (req, res, next) => {
+    try {
+      const { subjectId } = req.auth;
+      const state = await loadState(subjectId);
+
+      let mastery = {};
+      let unlocked = [];
+      let capstoneUnlocked = false;
+      let degraded = false;
+
+      try {
+        const result = await ml.mastery(state);
+        mastery = result.mastery;
+        unlocked = result.unlocked;
+        capstoneUnlocked = result.capstoneUnlocked;
+      } catch (err) {
+        if (!(err instanceof MlServiceError)) throw err;
+        // The tree is still worth showing without the model: cleared challenges
+        // and XP are facts from the log, not predictions. Saying which parts are
+        // missing beats an error page that hides progress the learner earned.
+        console.error("[api] ml service:", err.message);
+        degraded = true;
+      }
+
+      const progress = await loadProgress(subjectId);
+
+      res.json({
+        mastery,
+        unlocked,
+        capstoneUnlocked,
+        cleared: state.cleared,
+        xp: progress?.xp ?? 0,
+        badges: progress?.badges ?? [],
+        degraded,
+        nodes: state.candidates.map(c => ({
+          id: c.challenge_id,
+          skill: c.skill,
+          masteryRequired: c.mastery_required ?? 0,
+          isDrill: !!c.is_drill,
+          isBoss: !!c.is_boss,
+          requires: c.requires ?? null
+        })),
+        titles: await loadTitles(state.candidates.map(c => c.challenge_id))
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
+}
+
+/** @param {string} subjectId */
+async function defaultLoadProgress(subjectId) {
+  return /** @type {Promise<{ xp?: number, badges?: string[] } | null>} */ (
+    Progress.findOne({ subjectId }, { xp: 1, badges: 1 }).lean()
+  );
+}
+
+/**
+ * Titles for the tree, keyed by id.
+ *
+ * Only the title and tier -- the brief, the vulnerable code and everything the
+ * validator checks stay behind the challenge endpoint. A tree that shipped full
+ * challenge documents would hand over every locked challenge in advance.
+ *
+ * @param {string[]} ids
+ */
+async function defaultLoadTitles(ids) {
+  const rows = /** @type {Record<string, any>[]} */ (
+    await Challenge.find({ id: { $in: ids } }, { id: 1, title: 1, tier: 1, skill: 1 }).lean()
+  );
+  return Object.fromEntries(rows.map(r => [r.id, { title: r.title, tier: r.tier }]));
 }
 
 /**

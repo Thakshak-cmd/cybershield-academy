@@ -1,0 +1,101 @@
+.tree { position: relative; }
+
+/* The connector layer sits behind the nodes and never intercepts a click. */
+.tree__links {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.link {
+  stroke: var(--window-inner);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.link--lit { stroke: var(--secure); }
+
+.tree__branches {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.branch { display: flex; flex-direction: column; gap: 22px; }
+
+.branch__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--window-edge);
+}
+.branch__name {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--window-title);
+}
+.branch__value {
+  margin-left: auto;
+  font-family: var(--f-code);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 11px 12px;
+  text-align: left;
+  background: var(--window-fill);
+  border: 2px solid var(--window-inner);
+  border-radius: 2px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color .15s ease, transform .15s ease, background .15s ease;
+}
+
+.node__top { display: flex; align-items: baseline; gap: 7px; }
+.node__title { font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.node__boss { color: var(--breach); }
+.node__foot { color: var(--muted); }
+
+.node--open {
+  border-color: var(--window-edge);
+  background: var(--accent-soft);
+}
+.node--open:hover { transform: translateY(-1px); }
+
+.node--cleared { border-color: var(--secure); }
+.node--cleared .node__foot { color: var(--secure); }
+
+.node--locked {
+  opacity: .5;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.node--boss { border-style: dashed; }
+.node--boss.node--cleared { border-style: solid; }
+
+/* A cleared node gets a tick in the corner, so state is not carried by colour
+   alone -- which colour-blind users and greyscale printouts both need. */
+.node--cleared::after {
+  content: "✦";
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 11px;
+  color: var(--secure);
+}
+
+.node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

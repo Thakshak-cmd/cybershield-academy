@@ -237,6 +237,29 @@ export const api = {
     });
   },
 
+  async progress() {
+    if (!(await this.connect())) {
+      return {
+        mastery: { sqli: 0.15, xss: 0.15, csrf: 0.15 },
+        unlocked: ["sec-101"],
+        cleared: [],
+        capstoneUnlocked: false,
+        xp: 0,
+        badges: [],
+        degraded: false,
+        nodes: [
+          { id: "sec-101", skill: "sqli", masteryRequired: 0, isDrill: false, isBoss: false, requires: null },
+          { id: "sec-104", skill: "sqli", masteryRequired: 0.3, isDrill: false, isBoss: false, requires: "sec-101" }
+        ],
+        titles: {
+          "sec-101": { title: "The product search box returns other people's orders", tier: "beginner" },
+          "sec-104": { title: "Someone logged into an admin account without the password", tier: "intermediate" }
+        }
+      };
+    }
+    return call("/api/progress");
+  },
+
   hint(index) {
     return FIXTURE_HINTS[index] ?? null;
   },

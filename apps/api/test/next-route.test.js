@@ -29,7 +29,12 @@ const fakeMl = {
     };
   },
   async mastery() {
-    return { mastery: { sqli: 0.42 }, unlocked: [], capstoneUnlocked: false };
+    if (mlBehaviour === "down") throw new MlServiceError("ML service unreachable");
+    return {
+      mastery: /** @type {Record<string, number>} */ ({ sqli: 0.42 }),
+      unlocked: ["sec-101"],
+      capstoneUnlocked: false
+    };
   }
 };
 
@@ -72,7 +77,14 @@ before(async () => {
       return events.map((e, i) => ({ ...e, seq: i + 1 }));
     },
     findChallenge: async id => (id === CHALLENGE.id ? { ...CHALLENGE } : null),
-    loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] })
+    loadState: async () => ({
+      observations: [],
+      candidates: [{ challenge_id: "sec-101", skill: "sqli", mastery_required: 0 }],
+      cleared: [],
+      unlocked: []
+    }),
+    loadProgress: async () => ({ xp: 120, badges: [] }),
+    loadTitles: async () => ({ "sec-101": { title: "The product search box", tier: "beginner" } })
   }));
   app.use((err, _req, res, _next) => res.status(500).json({ error: err.message }));
 
@@ -180,6 +192,38 @@ describe("POST /api/challenges/:id/start", () => {
 
 /** @type {import("../src/ml-client.js").LearnerState} */
 const EMPTY_STATE = { observations: [], candidates: [], cleared: [], unlocked: [] };
+
+describe("GET /api/progress", () => {
+  test("returns mastery, the tree and what is cleared", async () => {
+    mlBehaviour = "ok";
+    const body = await (await fetch(base + "/api/progress")).json();
+    assert.equal(typeof body.mastery, "object");
+    assert.ok(Array.isArray(body.nodes));
+    assert.ok(Array.isArray(body.cleared));
+    assert.equal(body.degraded, false);
+  });
+
+  test("never ships challenge content with the tree", async () => {
+    mlBehaviour = "ok";
+    const blob = JSON.stringify(await (await fetch(base + "/api/progress")).json());
+    // A tree carrying full challenge documents would hand over every locked
+    // challenge in advance, answers included.
+    assert.ok(!blob.includes("vulnerable"));
+    assert.ok(!blob.includes("attackSuite"));
+    assert.ok(!blob.includes("no-string-interpolation"));
+  });
+
+  test("still shows earned progress when the model is unavailable", async () => {
+    mlBehaviour = "down";
+    const res = await fetch(base + "/api/progress");
+    // Cleared challenges and XP are facts from the log, not predictions. An error
+    // page here would hide progress the learner actually earned.
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.degraded, true);
+    assert.ok(Array.isArray(body.nodes));
+  });
+});
 
 describe("ml client", () => {
   test("refuses to guess a base URL", async () => {

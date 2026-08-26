@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { ChallengeScreen } from "./ChallengeScreen.jsx";
+import { ProgressScreen } from "./ProgressScreen.jsx";
 import { AuthScreen } from "./AuthScreen.jsx";
+import { Link, useRoute } from "./useRoute.jsx";
 import { PALETTES, usePalette } from "./usePalette.js";
 import { api } from "./api.js";
 import "./App.css";
@@ -11,6 +13,7 @@ export function App() {
     /** @type {{ handle: string, isStudyParticipant: boolean }|null} */ (null)
   );
   const [ready, setReady] = useState(false);
+  const [path, navigate] = useRoute();
 
   const { palette, setPalette, following, pinned } =
     usePalette({ isStudyParticipant: !!session?.isStudyParticipant });
@@ -51,6 +54,19 @@ export function App() {
         <span className="label">
           {session ? `Aurora Store · ${session.handle}` : "Aurora Store · Blue Team"}
         </span>
+
+        {session && (
+          <nav className="chrome__nav" aria-label="Sections">
+            <Link to="/" navigate={navigate}
+                  className={path === "/" ? "navlink navlink--on" : "navlink"}>
+              Assignment
+            </Link>
+            <Link to="/progress" navigate={navigate}
+                  className={path === "/progress" ? "navlink navlink--on" : "navlink"}>
+              Progress
+            </Link>
+          </nav>
+        )}
         {live === false && (
           <span className="offline label" title="Start the API to score against the real validator">
             offline · fixture data
@@ -88,7 +104,13 @@ export function App() {
         </div>
       </header>
 
-      {session ? <ChallengeScreen /> : <AuthScreen onAuthenticated={setSession} />}
+      {!session ? (
+        <AuthScreen onAuthenticated={setSession} />
+      ) : path === "/progress" ? (
+        <ProgressScreen onOpenChallenge={() => navigate("/")} />
+      ) : (
+        <ChallengeScreen />
+      )}
     </>
   );
 }
