@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Window } from "./components/Window.jsx";
 import { SkillTree } from "./components/SkillTree.jsx";
+import { Icon } from "./components/Icon.jsx";
+import { SKILL_ICONS } from "./components/icons.js";
 import { api } from "./api.js";
 import "./ProgressScreen.css";
 
@@ -76,6 +78,7 @@ export function ProgressScreen({ onOpenChallenge }) {
             {skills.map(skill => (
               <MasteryRow
                 key={skill}
+                icon={SKILL_ICONS[skill]}
                 name={SKILL_NAMES[skill]}
                 value={data.mastery[skill] ?? 0}
                 // Count via the node's own skill field. Matching on an id prefix
@@ -94,6 +97,7 @@ export function ProgressScreen({ onOpenChallenge }) {
             you've learned carries across, rather than one technique at a time.
           </p>
           <p className={data.capstoneUnlocked ? "capstone__gate capstone__gate--open" : "capstone__gate"}>
+            <Icon name={data.capstoneUnlocked ? "fracture" : "lock"} size={14} />{" "}
             {data.capstoneUnlocked
               ? "Unlocked — every domain is holding up."
               : `Locked until all three skills reach 0.70. ${skills.filter(s => (data.mastery[s] ?? 0) >= 0.7).length} of ${skills.length} there.`}
@@ -122,7 +126,7 @@ export function ProgressScreen({ onOpenChallenge }) {
  * solves" says what moved it, and quietly explains why a hint-assisted answer
  * did not.
  */
-function MasteryRow({ name, value, cleared, nodes }) {
+function MasteryRow({ icon, name, value, cleared, nodes }) {
   const nextGate = nodes
     .map(n => n.masteryRequired)
     .filter(t => t > value)
@@ -131,6 +135,7 @@ function MasteryRow({ name, value, cleared, nodes }) {
   return (
     <div className="stat">
       <div className="stat__head">
+        <Icon name={icon} size={16} className="stat__icon" />
         <span className="stat__name">{name}</span>
         <span className="stat__value">{value.toFixed(2)}</span>
       </div>

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Window, Pips } from "./components/Window.jsx";
 import { BreachDiagram } from "./components/BreachDiagram.jsx";
+import { Icon } from "./components/Icon.jsx";
+import { SKILL_ICONS } from "./components/icons.js";
 import { api } from "./api.js";
 import "./BossScreen.css";
 
@@ -91,7 +93,10 @@ export function BossScreen({ bossId = "sec-900", onLeave }) {
               className={`stagecard stagecard--${tone}${stage.id === active ? " stagecard--on" : ""}`}
               onClick={() => setActive(stage.id)}
             >
-              <span className="stagecard__skill label">{stage.skill}</span>
+              <span className="stagecard__skill label">
+                <Icon name={r?.passed ? "check" : SKILL_ICONS[stage.skill] ?? "shield"} size={14} />
+                {stage.skill}
+              </span>
               <span className="stagecard__title">{stage.title}</span>
               <span className="stagecard__state label">
                 {!r ? "not checked" : r.passed ? "held" : "still open"}

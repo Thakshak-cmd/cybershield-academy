@@ -1,0 +1,50 @@
+{
+  "$comment": "Every asset that is not original work must appear here before it ships. Source, licence and required attribution are recorded at the moment the file lands, because reconstructing where a PNG came from months later is unpleasant and this list becomes a dissertation appendix (LO3: legal and professional issues).",
+
+  "originalWork": [
+    {
+      "path": "apps/web/src/components/icons.js",
+      "description": "Icon set: database, browser, forgery, server, key, lock, check, fracture, shield, shieldCheck",
+      "author": "Thakshak Chintakrindi",
+      "notes": "Stroke-only SVG path data on a 24x24 grid, drawn to match the 2px window chrome. No third-party source."
+    },
+    {
+      "path": "apps/web/src/components/BreachDiagram.jsx",
+      "description": "The capstone adversary: Aurora's architecture rendered in a compromised state",
+      "author": "Thakshak Chintakrindi",
+      "notes": "SVG and CSS. Deliberately not a creature sprite - see docs/game-design.md section 7."
+    },
+    {
+      "path": "apps/web/src/components/Window.css",
+      "description": "JRPG window chrome: double rule, corner pips",
+      "author": "Thakshak Chintakrindi",
+      "notes": "CSS rather than a nine-slice image, so it recolours with the palette."
+    }
+  ],
+
+  "licensed": [],
+
+  "fonts": [
+    {
+      "family": "Pixelify Sans",
+      "source": "https://fonts.google.com/specimen/Pixelify+Sans",
+      "licence": "SIL Open Font License 1.1",
+      "attributionRequired": false,
+      "usedFor": "Window titles and menu commands"
+    },
+    {
+      "family": "IBM Plex Sans",
+      "source": "https://fonts.google.com/specimen/IBM+Plex+Sans",
+      "licence": "SIL Open Font License 1.1",
+      "attributionRequired": false,
+      "usedFor": "Everything the learner reads"
+    },
+    {
+      "family": "JetBrains Mono",
+      "source": "https://fonts.google.com/specimen/JetBrains+Mono",
+      "licence": "SIL Open Font License 1.1",
+      "attributionRequired": false,
+      "usedFor": "Code, and nothing else"
+    }
+  ]
+}

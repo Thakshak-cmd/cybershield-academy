@@ -15,6 +15,17 @@
 }
 .unit__inner { fill: none; stroke: var(--window-inner); stroke-width: 1; opacity: .5; }
 
+.unit__glyph {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke .5s ease;
+}
+.unit--breached .unit__glyph { stroke: var(--breach); }
+.unit--secured .unit__glyph  { stroke: var(--secure); }
+
 .unit__label {
   font-family: var(--f-read);
   font-size: 11px;

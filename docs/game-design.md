@@ -159,7 +159,17 @@ the learner patches in* stays crisp monospace. A pixel typeface at code density 
 unreadable, and the platform is fundamentally about reading code. The split is also
 diegetically coherent: a real screen inside a game world.
 
-**Assets are licensed, not authored.** Sources with clean terms only — Kenney (CC0),
+**Icons are drawn, not sourced — for now.** The set is stroke-only SVG on a 24x24
+grid using `currentColor`, so a glyph takes the colour of whatever it sits in and
+follows both palettes with no per-theme variant. Stroke weight matches the 2px
+window rules deliberately, so the icons read as part of the chrome rather than as
+something dropped on top of it.
+
+They are placeholders in the sense that they can be replaced, not that they are
+unfinished. `content/assets/README.md` describes the swap: drop an SVG in, add a
+manifest entry, point the name at the file. Nothing else changes.
+
+**Anything not original is licensed, not authored.** Sources with clean terms only — Kenney (CC0),
 game-icons.net (CC-BY 3.0), OpenGameArt/LPC (CC-BY-SA 3.0, note the share-alike is
 viral). Every asset is recorded in an asset manifest with source, licence, and
 required attribution; the manifest becomes a dissertation appendix and supports the

@@ -65,3 +65,7 @@
   max-width: 74ch;
 }
 .boss__note--won { color: var(--secure); }
+
+.stagecard__skill { display: flex; align-items: center; gap: 6px; }
+.stagecard--secure .stagecard__skill { color: var(--secure); }
+.stagecard--breach .stagecard__skill { color: var(--breach); }

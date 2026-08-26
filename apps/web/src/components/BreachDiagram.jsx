@@ -1,3 +1,4 @@
+import { ICONS, COMPONENT_ICONS } from "./icons.js";
 import "./BreachDiagram.css";
 
 /**
@@ -24,10 +25,10 @@ export function BreachDiagram({ compromised = [], secured = [], attacking = fals
     compromised.includes(id) ? "breached" : secured.includes(id) ? "secured" : "intact";
 
   const NODES = [
-    { id: "browser", label: "Customer browser", x: 40, y: 108, w: 132, h: 54 },
-    { id: "api", label: "Aurora API", x: 232, y: 108, w: 118, h: 54 },
-    { id: "database", label: "Customer data", x: 412, y: 44, w: 128, h: 54 },
-    { id: "session", label: "Session store", x: 412, y: 172, w: 128, h: 54 }
+    { id: "browser", label: "Customer browser", x: 40, y: 100, w: 132, h: 68 },
+    { id: "api", label: "Aurora API", x: 232, y: 100, w: 118, h: 68 },
+    { id: "database", label: "Customer data", x: 412, y: 36, w: 128, h: 68 },
+    { id: "session", label: "Session store", x: 412, y: 164, w: 128, h: 68 }
   ];
 
   const EDGES = [
@@ -62,11 +63,12 @@ export function BreachDiagram({ compromised = [], secured = [], attacking = fals
             <rect x={n.x} y={n.y} width={n.w} height={n.h} rx="2" className="unit__box" />
             <rect x={n.x + 3} y={n.y + 3} width={n.w - 6} height={n.h - 6} rx="1"
                   className="unit__inner" />
-            <text x={n.x + n.w / 2} y={n.y + n.h / 2 + 1} className="unit__label"
-                  textAnchor="middle" dominantBaseline="middle">
+            <Glyph name={COMPONENT_ICONS[n.id]} x={n.x + n.w / 2 - 9} y={n.y + 9} />
+            <text x={n.x + n.w / 2} y={n.y + 42} className="unit__label"
+                  textAnchor="middle">
               {n.label}
             </text>
-            <text x={n.x + n.w / 2} y={n.y + n.h - 9} className="unit__state"
+            <text x={n.x + n.w / 2} y={n.y + n.h - 8} className="unit__state"
                   textAnchor="middle">
               {state(n.id) === "breached" ? "BREACHED"
                 : state(n.id) === "secured" ? "HELD" : ""}
@@ -79,6 +81,26 @@ export function BreachDiagram({ compromised = [], secured = [], attacking = fals
         {describe(compromised, secured)}
       </figcaption>
     </figure>
+  );
+}
+
+/**
+ * An icon inside the diagram's own coordinate space.
+ *
+ * The shared Icon component renders its own <svg>, which cannot nest usefully
+ * here, so the same path data is drawn directly into this one at an offset.
+ * One registry, two renderers.
+ */
+function Glyph({ name, x, y }) {
+  const glyph = ICONS[name];
+  if (!glyph) return null;
+  return (
+    <g transform={`translate(${x} ${y}) scale(0.75)`} className="unit__glyph">
+      {glyph.paths.map((d, i) => <path key={i} d={d} />)}
+      {(glyph.circles || []).map(([cx, cy, r], i) => (
+        <circle key={`c${i}`} cx={cx} cy={cy} r={r} />
+      ))}
+    </g>
   );
 }
 

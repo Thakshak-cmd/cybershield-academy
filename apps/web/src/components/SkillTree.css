@@ -64,7 +64,7 @@
   transition: border-color .15s ease, transform .15s ease, background .15s ease;
 }
 
-.node__top { display: flex; align-items: baseline; gap: 7px; }
+.node__top { display: flex; align-items: flex-start; gap: 8px; }
 .node__title { font-size: 13.5px; font-weight: 600; line-height: 1.35; }
 .node__boss { color: var(--breach); }
 .node__foot { color: var(--muted); }
@@ -87,15 +87,12 @@
 .node--boss { border-style: dashed; }
 .node--boss.node--cleared { border-style: solid; }
 
-/* A cleared node gets a tick in the corner, so state is not carried by colour
-   alone -- which colour-blind users and greyscale printouts both need. */
-.node--cleared::after {
-  content: "✦";
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  font-size: 11px;
-  color: var(--secure);
-}
+/* Each node's icon reports its state as well as its skill -- a tick when cleared,
+   a padlock when locked -- so state never rests on colour alone, which colour-blind
+   users and greyscale printouts both need. */
+.node__icon { margin-top: 1px; }
+.node--cleared .node__icon { color: var(--secure); }
+.node--open .node__icon { color: var(--accent); }
+.node--boss .node__icon { color: var(--breach); }
 
 .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

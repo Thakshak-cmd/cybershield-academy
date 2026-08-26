@@ -34,7 +34,7 @@
 .sheet__stats { display: flex; flex-direction: column; gap: 18px; }
 
 .stat { display: flex; flex-direction: column; gap: 6px; }
-.stat__head { display: flex; align-items: baseline; gap: 10px; }
+.stat__head { display: flex; align-items: center; gap: 9px; }
 .stat__name { font-size: 14px; font-weight: 600; }
 .stat__value {
   margin-left: auto;
@@ -71,3 +71,5 @@
 .capstone__brief { margin: 0 0 12px; font-size: 13.5px; color: var(--ink-2); }
 .capstone__gate { margin: 0; font-size: 13px; color: var(--muted); }
 .capstone__gate--open { color: var(--breach); font-weight: 600; }
+
+.stat__icon { color: var(--muted); }

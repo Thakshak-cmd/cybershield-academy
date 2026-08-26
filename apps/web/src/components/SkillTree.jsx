@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Icon } from "./Icon.jsx";
+import { SKILL_ICONS } from "./icons.js";
 import "./SkillTree.css";
 
 /**
@@ -147,6 +149,7 @@ export function SkillTree({ nodes, titles, mastery, unlocked, cleared, onSelect 
         {Object.entries(bySkill).map(([skill, branch]) => (
           <div className="branch" key={skill}>
             <header className="branch__head">
+              <Icon name={SKILL_ICONS[skill] ?? "shield"} size={17} />
               <span className="branch__name pixel">{skill}</span>
               <span className="branch__value">{(mastery[skill] ?? 0).toFixed(2)}</span>
             </header>
@@ -164,7 +167,10 @@ export function SkillTree({ nodes, titles, mastery, unlocked, cleared, onSelect 
                   aria-label={`${meta.title}, ${s}`}
                 >
                   <span className="node__top">
-                    {node.isBoss && <span className="node__boss label">boss</span>}
+                    {node.isBoss
+                      ? <Icon name="fracture" size={15} className="node__icon" />
+                      : <Icon name={s === "cleared" ? "check" : s === "open" ? SKILL_ICONS[node.skill] ?? "shield" : "lock"}
+                              size={15} className="node__icon" />}
                     <span className="node__title">{meta.title}</span>
                   </span>
                   <span className="node__foot label">

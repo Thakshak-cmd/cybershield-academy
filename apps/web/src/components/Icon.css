@@ -1,0 +1,8 @@
+.icon {
+  display: inline-block;
+  vertical-align: -0.15em;
+  flex: 0 0 auto;
+  /* Inherits from whatever it sits in, so one set serves both palettes and every
+     state colour without a variant per combination. */
+  color: inherit;
+}
