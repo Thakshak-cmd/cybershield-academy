@@ -1,0 +1,67 @@
+.boss {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 20px 20px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.boss__loading, .boss__error { padding: 32px; text-align: center; }
+.boss__error { color: var(--breach); }
+
+.boss__head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 1.1fr); gap: 22px; align-items: center; }
+@media (max-width: 900px) { .boss__head { grid-template-columns: 1fr; } }
+
+.boss__brief { margin: 0; color: var(--ink-2); max-width: 56ch; line-height: 1.6; }
+
+/* ---------- stage selector ---------- */
+
+.boss__stages { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+
+.stagecard {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 12px 13px;
+  text-align: left;
+  background: var(--window-fill);
+  border: 2px solid var(--window-inner);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.stagecard:hover { transform: translateY(-1px); }
+.stagecard--on { border-color: var(--window-edge); background: var(--accent-soft); }
+.stagecard--breach { border-color: var(--breach); }
+.stagecard--secure { border-color: var(--secure); }
+
+.stagecard__title { font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.stagecard--secure .stagecard__state { color: var(--secure); }
+.stagecard--breach .stagecard__state { color: var(--breach); }
+
+/* ---------- the stage being worked on ---------- */
+
+.boss__work { display: flex; flex-direction: column; gap: 16px; }
+.stage__brief { margin: 0; color: var(--ink-2); max-width: 74ch; }
+
+.stage__suites { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 700px) { .stage__suites { grid-template-columns: 1fr; } }
+
+.stage__suite { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+
+.stage__fail { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.stage__fail code { font-family: var(--f-code); font-size: 11.5px; color: var(--ink-2); }
+.stage__why { color: var(--breach); line-height: 1.5; }
+
+/* ---------- commands ---------- */
+
+.boss__commands { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.boss__tally { margin-left: auto; font-size: 13px; color: var(--ink-2); }
+
+.boss__note {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 74ch;
+}
+.boss__note--won { color: var(--secure); }

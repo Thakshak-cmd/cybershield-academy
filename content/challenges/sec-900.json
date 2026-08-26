@@ -1,0 +1,86 @@
+{
+  "id": "sec-900",
+  "title": "The Aurora Breach",
+  "skill": "sqli",
+  "skills": ["sqli", "xss", "csrf"],
+  "tier": "advanced",
+  "format": "boss",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "reportedBy": "Marcus (Incident Response)",
+
+  "masteryRequired": 0.7,
+  "isDrill": false,
+  "isBoss": true,
+  "isCapstone": true,
+  "requires": null,
+
+  "brief": "Three o'clock in the morning and Aurora is on fire. One attacker chained three separate weaknesses: they read the customer table, they got their code running in a signed-in session, and they used that session to change an account. Each foothold made the next one easier. Close all three and the chain breaks anywhere you cut it — but a partial fix leaves them a way back in.",
+
+  "hints": [
+    "These are three different bugs, not one bug in three places. The fix that works for the database will not help the browser.",
+    "Work out what each stage trusts that it should not. The query trusts a search term, the page trusts a review, the endpoint trusts that a request came from Aurora.",
+    "Every technique you need has appeared before. The difficulty is recognising which one belongs where."
+  ],
+
+  "xp": { "firstAttempt": 400, "withHints": 200, "retry": 120 },
+
+  "stages": [
+    {
+      "id": "ledger",
+      "component": "database",
+      "skill": "sqli",
+      "title": "They read the customer table",
+      "file": "routes/orders.js",
+      "brief": "The order lookup builds its query by hand. The attacker used it to read a table it was never meant to touch.",
+      "vulnerable": "app.get('/api/orders', async (req, res) => {\n  const { reference } = req.query;\n\n  const sql = `SELECT id, total, placed_at FROM orders\n     WHERE reference = '${reference}'`;\n\n  const rows = await db.query(sql);\n  res.json(rows);\n});",
+      "meta": {
+        "dbMethod": "query",
+        "inputNames": ["reference"],
+        "expectedTable": "orders"
+      },
+      "rules": [
+        "sqli.no-string-interpolation",
+        "sqli.uses-parameterised-query",
+        "input.preserved-verbatim",
+        "sql.queries-expected-table"
+      ]
+    },
+    {
+      "id": "storefront",
+      "component": "browser",
+      "skill": "xss",
+      "title": "They got code running in a signed-in session",
+      "file": "public/order-history.js",
+      "brief": "The order history page writes the delivery note straight into the document. That is where the attacker's script ran, inside a real customer's session.",
+      "vulnerable": "function renderNote(order) {\n  const row = document.querySelector('#order-' + order.id);\n\n  row.querySelector('.note').innerHTML = order.deliveryNote;\n}",
+      "meta": {
+        "inputNames": ["deliveryNote", "order"]
+      },
+      "rules": [
+        "xss.no-html-sink",
+        "xss.uses-safe-sink",
+        "output.reaches-the-page",
+        "output.no-markup-stripping"
+      ]
+    },
+    {
+      "id": "checkout",
+      "component": "session",
+      "skill": "csrf",
+      "title": "They used that session to change an account",
+      "file": "routes/account.js",
+      "brief": "With code running in the customer's page, the attacker made their browser post a new payout account. The endpoint asked for nothing but the cookie the browser was already sending.",
+      "vulnerable": "app.post('/api/account/payout', async (req, res) => {\n  const { sortCode, accountNumber } = req.body;\n\n  await updatePayout(req.session.userId, { sortCode, accountNumber });\n\n  res.json({ ok: true });\n});",
+      "meta": {
+        "inputNames": ["sortCode", "accountNumber"],
+        "expectedCall": "updatePayout"
+      },
+      "rules": [
+        "csrf.verifies-token",
+        "csrf.not-header-only",
+        "csrf.still-performs-the-action"
+      ]
+    }
+  ]
+}

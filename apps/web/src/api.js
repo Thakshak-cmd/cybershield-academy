@@ -260,6 +260,19 @@ export const api = {
     return call("/api/progress");
   },
 
+  async boss(id) {
+    if (!(await this.connect())) throw new Error("The encounter needs the API running.");
+    return call(`/api/boss/${id}`);
+  },
+
+  async bossAttempt(id, sources, durationMs) {
+    if (!(await this.connect())) throw new Error("The encounter needs the API running.");
+    return call(`/api/boss/${id}/attempt`, {
+      method: "POST",
+      body: JSON.stringify({ sources, durationMs })
+    });
+  },
+
   hint(index) {
     return FIXTURE_HINTS[index] ?? null;
   },

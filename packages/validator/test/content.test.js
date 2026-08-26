@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { validate, RULES } from "../src/index.js";
-import { REFERENCE_PATCHES } from "../../../content/reference-patches.js";
+import { validate, validateStages, RULES } from "../src/index.js";
+import { REFERENCE_PATCHES, BOSS_REFERENCE_PATCHES } from "../../../content/reference-patches.js";
 
 /**
  * Every challenge, checked as content rather than as code.
@@ -18,9 +18,14 @@ import { REFERENCE_PATCHES } from "../../../content/reference-patches.js";
 
 const CONTENT = join(dirname(fileURLToPath(import.meta.url)), "../../../content/challenges");
 
-const challenges = readdirSync(CONTENT)
+const all = readdirSync(CONTENT)
   .filter(f => f.endsWith(".json"))
   .map(f => JSON.parse(readFileSync(join(CONTENT, f), "utf8")));
+
+// A boss carries its rules per stage, so the single-file assertions below do not
+// apply to it. Splitting here rather than special-casing each test.
+const challenges = all.filter(c => !c.stages);
+const bosses = all.filter(c => c.stages);
 
 const PRIOR_MASTERY = 0.15;
 
@@ -121,7 +126,7 @@ describe("reference patches score as intended", () => {
 
 describe("the catalogue as a whole", () => {
   test("ids are unique", () => {
-    const ids = challenges.map(c => c.id);
+    const ids = all.map(c => c.id);
     assert.equal(new Set(ids).size, ids.length);
   });
 
@@ -139,8 +144,8 @@ describe("the catalogue as a whole", () => {
   });
 
   test("no prerequisite names a challenge that does not exist", () => {
-    const ids = new Set(challenges.map(c => c.id));
-    for (const c of challenges) {
+    const ids = new Set(all.map(c => c.id));
+    for (const c of all) {
       if (c.requires) assert.ok(ids.has(c.requires), `${c.id} requires missing ${c.requires}`);
     }
   });
@@ -148,12 +153,99 @@ describe("the catalogue as a whole", () => {
   test("a prerequisite is never harder to reach than what it gates", () => {
     // Otherwise the tree opens a node whose prerequisite is still locked, and
     // the learner sees an available challenge they cannot actually take.
-    const byId = new Map(challenges.map(c => [c.id, c]));
-    for (const c of challenges) {
+    const byId = new Map(all.map(c => [c.id, c]));
+    for (const c of all) {
       if (!c.requires) continue;
       const parent = byId.get(c.requires);
       assert.ok((parent.masteryRequired ?? 0) <= (c.masteryRequired ?? 0),
         `${c.id} opens at ${c.masteryRequired} but its prerequisite ${parent.id} needs ${parent.masteryRequired}`);
     }
   });
+});
+
+
+describe("boss encounters", () => {
+  test("there is at least one", () => {
+    assert.ok(bosses.length > 0);
+  });
+
+  for (const boss of bosses) {
+    describe(boss.id, () => {
+      test("draws on more than one skill", () => {
+        // A single-skill boss is just a hard challenge. The transfer being tested
+        // is recognising which technique belongs where, which needs at least two.
+        const skills = new Set(boss.stages.map(st => st.skill));
+        assert.ok(skills.size > 1, `${boss.id} only covers ${[...skills].join(", ")}`);
+      });
+
+      test("each stage maps to a distinct part of the system", () => {
+        // The diagram draws the breach from these, so two stages sharing a
+        // component would make one of them invisible.
+        const components = boss.stages.map(st => st.component);
+        assert.equal(new Set(components).size, components.length);
+      });
+
+      test("every stage names real rules and has both kinds", () => {
+        for (const st of boss.stages) {
+          assert.ok(st.rules?.length, `${boss.id}/${st.id} has no rules`);
+          for (const id of st.rules) {
+            assert.ok(RULES[id], `${boss.id}/${st.id} names unknown rule "${id}"`);
+          }
+          const kinds = new Set(st.rules.map(id => RULES[id].kind));
+          assert.ok(kinds.has("security") && kinds.has("functional"),
+            `${boss.id}/${st.id} needs both a security and a functional rule`);
+        }
+      });
+
+      test("every stage's own vulnerable code fails", () => {
+        for (const st of boss.stages) {
+          assert.equal(validate(st, st.vulnerable).passed, false,
+            `${boss.id}/${st.id} starts already solved`);
+        }
+      });
+
+      test("an empty submission reports every part compromised", () => {
+        // Unattempted must not read as safe, or the diagram shows a system that
+        // looks intact because nobody has looked at it.
+        const outcome = validateStages(boss, {});
+        assert.equal(outcome.passed, false);
+        assert.equal(outcome.compromised.length, boss.stages.length);
+        assert.deepEqual(outcome.secured, []);
+        assert.ok(outcome.stages.every(st => st.attempted === false));
+      });
+
+      test("has reference patches", () => {
+        assert.ok(BOSS_REFERENCE_PATCHES[boss.id]?.length,
+          `${boss.id} has no reference patches, so its stages are unverified`);
+      });
+    });
+  }
+});
+
+describe("boss reference patches score as intended", () => {
+  for (const [id, patches] of Object.entries(BOSS_REFERENCE_PATCHES)) {
+    const boss = bosses.find(b => b.id === id);
+    test(`${id} exists`, () => assert.ok(boss, `unknown boss ${id}`));
+    if (!boss) continue;
+
+    for (const patch of patches) {
+      test(`${id}: ${patch.label}`, () => {
+        const outcome = validateStages(boss, patch.sources);
+        const held = outcome.stages.filter(st => st.passed).map(st => st.stageId).sort();
+        assert.deepEqual(held, [...patch.expectPassed].sort(),
+          `${id}/${patch.label} held the wrong stages`);
+        assert.equal(outcome.passed, held.length === boss.stages.length);
+      });
+    }
+
+    test(`${id}: one technique does not close every stage`, () => {
+      // The whole reason the encounter exists. If applying a parameterised query
+      // to all three stages cleared the boss, it would be teaching that the
+      // techniques are interchangeable - the opposite of the point.
+      const oneTechnique = patches.find(p => /everywhere/i.test(p.label));
+      assert.ok(oneTechnique, `${id} has no "same technique everywhere" reference patch`);
+      assert.ok(oneTechnique.expectPassed.length < boss.stages.length,
+        `${id} can be cleared with a single technique`);
+    });
+  }
 });

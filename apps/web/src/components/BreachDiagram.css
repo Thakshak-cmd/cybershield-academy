@@ -1,0 +1,81 @@
+.breach { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+
+.breach__svg { width: 100%; height: auto; display: block; }
+
+.breach__caption { text-align: center; color: var(--muted); }
+.breach--held .breach__caption { color: var(--secure); }
+
+/* ---------- units ---------- */
+
+.unit__box {
+  fill: var(--surface-2);
+  stroke: var(--window-inner);
+  stroke-width: 2;
+  transition: stroke .5s ease, fill .5s ease;
+}
+.unit__inner { fill: none; stroke: var(--window-inner); stroke-width: 1; opacity: .5; }
+
+.unit__label {
+  font-family: var(--f-read);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--ink-2);
+}
+
+.unit__state {
+  font-family: var(--f-read);
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  fill: var(--muted);
+}
+
+.unit--breached .unit__box { stroke: var(--breach); fill: var(--breach-soft); }
+.unit--breached .unit__inner { stroke: var(--breach); opacity: .6; }
+.unit--breached .unit__label { fill: var(--breach); }
+.unit--breached .unit__state { fill: var(--breach); }
+
+.unit--secured .unit__box { stroke: var(--secure); fill: var(--secure-soft); }
+.unit--secured .unit__inner { stroke: var(--secure); opacity: .6; }
+.unit--secured .unit__label { fill: var(--ink); }
+.unit--secured .unit__state { fill: var(--secure); }
+
+/* A breached unit breathes. Motion is what makes it read as ongoing rather than
+   as a static diagram of something that already happened. */
+.unit--breached .unit__box { animation: alarm 1.9s ease-in-out infinite; }
+
+@keyframes alarm {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .62; }
+}
+
+/* ---------- edges ---------- */
+
+.edge {
+  stroke: var(--window-inner);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  transition: stroke .5s ease;
+}
+.edge--breached { stroke: var(--breach); }
+.edge--secured  { stroke: var(--secure); }
+
+/* A dash travelling along a live route, so the attack reads as in progress. */
+.edge__pulse {
+  stroke: var(--breach);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 10 190;
+  animation: travel 2.2s linear infinite;
+  filter: brightness(1.5);
+}
+
+@keyframes travel {
+  from { stroke-dashoffset: 200; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unit--breached .unit__box { animation: none; }
+  .edge__pulse { animation: none; opacity: 0; }
+}

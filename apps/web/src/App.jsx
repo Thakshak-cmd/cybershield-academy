@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChallengeScreen } from "./ChallengeScreen.jsx";
 import { ProgressScreen } from "./ProgressScreen.jsx";
+import { BossScreen } from "./BossScreen.jsx";
 import { AuthScreen } from "./AuthScreen.jsx";
 import { Link, useRoute } from "./useRoute.jsx";
 import { PALETTES, usePalette } from "./usePalette.js";
@@ -65,6 +66,10 @@ export function App() {
                   className={path === "/progress" ? "navlink navlink--on" : "navlink"}>
               Progress
             </Link>
+            <Link to="/boss" navigate={navigate}
+                  className={path === "/boss" ? "navlink navlink--on" : "navlink"}>
+              The Aurora Breach
+            </Link>
           </nav>
         )}
         {live === false && (
@@ -108,6 +113,8 @@ export function App() {
         <AuthScreen onAuthenticated={setSession} />
       ) : path === "/progress" ? (
         <ProgressScreen onOpenChallenge={() => navigate("/")} />
+      ) : path === "/boss" ? (
+        <BossScreen onLeave={() => navigate("/progress")} />
       ) : (
         <ChallengeScreen />
       )}

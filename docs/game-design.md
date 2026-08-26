@@ -74,6 +74,21 @@ undercut the engagement thesis.
 inventory and loot, party members, battle animations, procedural generation. These
 are months of systems work that teach nothing about web security.
 
+### The boss entity is the system, not a creature
+
+No asset pack contains a sprite for cross-site request forgery. Bolting a monster
+onto it would be decoration with no relationship to what the learner is doing, and
+it would need art that does not exist.
+
+The adversary is drawn as **Aurora's architecture in a compromised state**: browser,
+API, customer data, session store, with the breach on the parts still reachable and
+each one turning as its stage is closed. It is SVG and CSS, so it needs no licensed
+asset, no style-matching and no attribution — and it is the honest picture rather
+than a mascot.
+
+This removes the project's largest asset category entirely. What remains to license
+is icons and portraits; see the licensing note above.
+
 ### Why bosses are the strongest element
 
 A capstone requiring SQLi *and* CSRF knowledge together is a **transfer task**: it

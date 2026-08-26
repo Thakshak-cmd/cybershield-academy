@@ -78,7 +78,20 @@ const ChallengeSchema = new Schema({
   masteryRequired: { type: Number, default: 0 },
   isDrill: { type: Boolean, default: false },
   isBoss: { type: Boolean, default: false },
+  isCapstone: { type: Boolean, default: false },
   requires: { type: String, default: null },
+
+  // Every skill an encounter draws on. A capstone is cross-skill by definition,
+  // so the single `skill` field above is only its primary.
+  skills: { type: [String], default: undefined },
+
+  // A boss is several files patched against one incident. Mixed rather than a
+  // sub-schema: a stage is the same shape the validator already understands, and
+  // pinning it here would mean two definitions of that shape to keep in step.
+  //
+  // Mongoose silently drops fields the schema does not declare, so omitting this
+  // seeded the encounter with its stages stripped and no error anywhere.
+  stages: { type: [Schema.Types.Mixed], default: undefined },
 
   meta: { type: Schema.Types.Mixed, default: {} },
   rules: { type: [String], default: [] },

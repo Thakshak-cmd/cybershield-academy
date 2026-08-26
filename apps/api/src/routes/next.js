@@ -3,9 +3,13 @@ import { Router } from "express";
 import { SCHEMA_VERSION } from "@cybershield/shared";
 import { Challenge, Progress } from "../models/index.js";
 import { append as defaultAppend, bktObservationsFor as defaultObservations } from "../telemetry.js";
+import { validateStages } from "@cybershield/validator";
 import { createMlClient, MlServiceError } from "../ml-client.js";
 
 /** @typedef {Record<string, any>} LeanChallenge */
+
+/** Parsing is CPU-bound and a boss carries several files, so the cap is per-encounter. */
+const MAX_BOSS_BYTES = 80_000;
 
 /**
  * Collaborators are injected rather than imported at the call site.
@@ -141,6 +145,90 @@ export function createNextRouter(deps = {}) {
   });
 
   /**
+   * GET /api/boss/:id
+   *
+   * The encounter, with each stage's brief and starting code. Rules and meta are
+   * stripped exactly as they are for an ordinary challenge.
+   */
+  router.get("/boss/:id", async (req, res, next) => {
+    try {
+      const boss = await findChallenge(req.params.id);
+      if (!boss || !boss.stages) return res.status(404).json({ error: "No such encounter." });
+      res.json({ boss: publicBoss(boss) });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * POST /api/boss/:id/attempt
+   *
+   * Scores every stage and reports which parts of the system are still reachable.
+   * A partial fix is a real outcome, not a failure to be flattened into one bit:
+   * seeing two stages held and one open is what teaches that the techniques are
+   * not interchangeable.
+   */
+  router.post("/boss/:id/attempt", async (req, res, next) => {
+    try {
+      const { subjectId, sessionId, isStudyParticipant } = req.auth;
+      const { sources, durationMs = 0 } = req.body ?? {};
+
+      if (!sources || typeof sources !== "object") {
+        return res.status(400).json({ error: "Patches are required." });
+      }
+      const total = Object.values(sources).reduce(
+        (n, v) => n + (typeof v === "string" ? Buffer.byteLength(v, "utf8") : 0), 0);
+      if (total > MAX_BOSS_BYTES) {
+        return res.status(413).json({ error: "Those patches are too large to check." });
+      }
+
+      const boss = await findChallenge(req.params.id);
+      if (!boss || !boss.stages) return res.status(404).json({ error: "No such encounter." });
+
+      const outcome = validateStages(/** @type {any} */ (boss), sources);
+
+      await append(subjectId, [{
+        schemaVersion: SCHEMA_VERSION,
+        subjectId, sessionId,
+        occurredAt: new Date(),
+        isStudyParticipant,
+        type: "challenge.attempted",
+        payload: {
+          challengeId: boss.id,
+          skill: boss.skill,
+          attemptNo: 1,
+          correct: outcome.passed,
+          validator: boss.validator,
+          // Per stage, so the analysis can ask which technique a learner failed
+          // to transfer rather than only whether the boss was beaten.
+          failedRules: outcome.stages.flatMap(st => st.failedRules.map(r => `${st.stageId}:${r}`)),
+          submissionHash: "",
+          durationMs,
+          countsForBkt: false
+        }
+      }]);
+
+      res.json({
+        passed: outcome.passed,
+        compromised: outcome.compromised,
+        secured: outcome.secured,
+        stages: outcome.stages.map(st => ({
+          stageId: st.stageId,
+          component: st.component,
+          skill: st.skill,
+          attempted: st.attempted,
+          passed: st.passed,
+          parseError: st.parseError,
+          security: st.security,
+          functional: st.functional
+        }))
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
    * GET /api/progress
    *
    * Everything the character sheet and skill tree render: mastery per skill, which
@@ -222,6 +310,31 @@ async function defaultLoadTitles(ids) {
     await Challenge.find({ id: { $in: ids } }, { id: 1, title: 1, tier: 1, skill: 1 }).lean()
   );
   return Object.fromEntries(rows.map(r => [r.id, { title: r.title, tier: r.tier }]));
+}
+
+/**
+ * A boss with the answers removed, stage by stage.
+ * @param {Record<string, any>} boss
+ */
+function publicBoss(boss) {
+  return {
+    id: boss.id,
+    title: boss.title,
+    brief: boss.brief,
+    repo: boss.repo,
+    reportedBy: boss.reportedBy,
+    skills: boss.skills || [boss.skill],
+    hintCount: (boss.hints || []).length,
+    stages: (boss.stages || []).map(st => ({
+      id: st.id,
+      component: st.component,
+      skill: st.skill,
+      title: st.title,
+      brief: st.brief,
+      file: st.file,
+      vulnerable: st.vulnerable
+    }))
+  };
 }
 
 /**

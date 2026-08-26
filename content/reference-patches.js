@@ -203,3 +203,89 @@ export const REFERENCE_PATCHES = {
     }
   ]
 };
+
+/**
+ * Boss reference answers, keyed by stage.
+ *
+ * A boss is only a transfer task if each stage needs a different technique. The
+ * "one technique everywhere" entry exists to prove that: a learner who reaches
+ * for a parameterised query three times closes exactly one of the three holes,
+ * and the encounter has to say so.
+ *
+ * @type {Record<string, { label: string, sources: Record<string, string>,
+ *                         expectPassed: string[] }[]>}
+ */
+export const BOSS_REFERENCE_PATCHES = {
+  "sec-900": [
+    {
+      label: "all three, each with the right technique",
+      expectPassed: ["ledger", "storefront", "checkout"],
+      sources: {
+        ledger: `app.get('/api/orders', async (req, res) => {
+  const { reference } = req.query;
+  const sql = 'SELECT id, total, placed_at FROM orders WHERE reference = ?';
+  const rows = await db.query(sql, [reference]);
+  res.json(rows);
+});`,
+        storefront: `function renderNote(order) {
+  const row = document.querySelector('#order-' + order.id);
+  row.querySelector('.note').textContent = order.deliveryNote;
+}`,
+        checkout: `app.post('/api/account/payout', async (req, res) => {
+  const { sortCode, accountNumber, csrfToken } = req.body;
+  if (csrfToken !== req.session.csrfToken) {
+    return res.status(403).json({ error: 'Invalid request token.' });
+  }
+  await updatePayout(req.session.userId, { sortCode, accountNumber });
+  res.json({ ok: true });
+});`
+      }
+    },
+    {
+      label: "parameterised queries everywhere",
+      // The whole point of the encounter. Binding parameters is exactly right for
+      // the database and does nothing at all for the other two.
+      expectPassed: ["ledger"],
+      sources: {
+        ledger: `app.get('/api/orders', async (req, res) => {
+  const { reference } = req.query;
+  const sql = 'SELECT id, total, placed_at FROM orders WHERE reference = ?';
+  const rows = await db.query(sql, [reference]);
+  res.json(rows);
+});`,
+        storefront: `function renderNote(order) {
+  const row = document.querySelector('#order-' + order.id);
+  row.querySelector('.note').innerHTML = order.deliveryNote;
+}`,
+        checkout: `app.post('/api/account/payout', async (req, res) => {
+  const { sortCode, accountNumber } = req.body;
+  await updatePayout(req.session.userId, { sortCode, accountNumber });
+  res.json({ ok: true });
+});`
+      }
+    },
+    {
+      label: "two of three, checkout left open",
+      expectPassed: ["ledger", "storefront"],
+      sources: {
+        ledger: `app.get('/api/orders', async (req, res) => {
+  const { reference } = req.query;
+  const sql = 'SELECT id, total, placed_at FROM orders WHERE reference = ?';
+  const rows = await db.query(sql, [reference]);
+  res.json(rows);
+});`,
+        storefront: `function renderNote(order) {
+  const row = document.querySelector('#order-' + order.id);
+  row.querySelector('.note').textContent = order.deliveryNote;
+}`,
+        checkout: `app.post('/api/account/payout', async (req, res) => {
+  const { sortCode, accountNumber } = req.body;
+  const referer = req.get('referer') || '';
+  if (!referer.startsWith('https://aurora.shop')) return res.sendStatus(403);
+  await updatePayout(req.session.userId, { sortCode, accountNumber });
+  res.json({ ok: true });
+});`
+      }
+    }
+  ]
+};
