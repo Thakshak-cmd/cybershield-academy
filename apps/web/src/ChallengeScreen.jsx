@@ -22,6 +22,7 @@ export function ChallengeScreen() {
   const [reason, setReason] = useState("");
   const [mastery, setMastery] = useState(/** @type {Record<string, number>} */ ({}));
   const [patch, setPatch] = useState("");
+  const [picked, setPicked] = useState(/** @type {number[]} */ ([]));
   const [verdict, setVerdict] = useState(/** @type {Verdict|null} */ (null));
   const [busy, setBusy] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
@@ -43,12 +44,19 @@ export function ChallengeScreen() {
     return () => { cancelled = true; };
   }, []);
 
+  const isSpot = challenge?.format === "spot";
+
   async function deploy() {
     if (!challenge || busy) return;
+    if (isSpot && picked.length === 0) {
+      setError("Choose a line first.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const result = await api.attempt(challenge.id, patch, Date.now() - openedAt.current);
+      const result = await api.attempt(
+        challenge.id, isSpot ? picked : patch, Date.now() - openedAt.current);
       setVerdict(result);
     } catch (err) {
       setError(err.message);
@@ -61,6 +69,7 @@ export function ChallengeScreen() {
   async function nextAssignment() {
     setVerdict(null);
     setHintsShown(0);
+    setPicked([]);
     setChallenge(null);
     const next = await api.next();
     if (!next.challenge) return;
@@ -104,19 +113,41 @@ export function ChallengeScreen() {
 
       <div className="stage">
         <div className="stage__main">
-          <Window title="The code as it stands" tone="quiet" flush>
-            <CodeBlock source={challenge.vulnerable} />
-          </Window>
+          {isSpot ? (
+            <Window
+              title="Point at the flaw"
+              badge={<span className="label">
+                pick {challenge.flawedCount ?? 1} line{(challenge.flawedCount ?? 1) === 1 ? "" : "s"}
+              </span>}
+              flush
+            >
+              <CodeBlock
+                source={challenge.vulnerable}
+                picked={picked}
+                onPick={n => {
+                  setVerdict(null);
+                  setError(null);
+                  setPicked(p => p.includes(n) ? p.filter(x => x !== n) : [...p, n]);
+                }}
+              />
+            </Window>
+          ) : (
+            <>
+              <Window title="The code as it stands" tone="quiet" flush>
+                <CodeBlock source={challenge.vulnerable} />
+              </Window>
 
-          <Window title="Your patch" badge={<span className="label">editable</span>} flush>
-            <textarea
-              className="editor"
-              value={patch}
-              spellCheck="false"
-              onChange={e => { setPatch(e.target.value); setVerdict(null); }}
-              aria-label="Your patch"
-            />
-          </Window>
+              <Window title="Your patch" badge={<span className="label">editable</span>} flush>
+                <textarea
+                  className="editor"
+                  value={patch}
+                  spellCheck="false"
+                  onChange={e => { setPatch(e.target.value); setVerdict(null); }}
+                  aria-label="Your patch"
+                />
+              </Window>
+            </>
+          )}
         </div>
 
         <aside className="stage__side">
@@ -158,7 +189,7 @@ export function ChallengeScreen() {
               <li>
                 <button className="cmd cmd--primary pixel" onClick={deploy} disabled={busy}>
                   <span className="cmd__caret">▸</span>
-                  {busy ? "Checking…" : "Deploy patch"}
+                  {busy ? "Checking…" : isSpot ? "That's the one" : "Deploy patch"}
                 </button>
               </li>
               <li>
@@ -177,7 +208,7 @@ export function ChallengeScreen() {
 
           <Window title="Field notes" tone="quiet">
             <p className="label reason">{reason}</p>
-            <MasteryBar skill="sqli" value={mastery.sqli ?? 0.15} />
+            <MasteryBar skill={challenge.skill} value={mastery[challenge.skill] ?? 0.15} />
             {hintsShown > 0 && (
               <ol className="hints">
                 {Array.from({ length: hintsShown }, (_, i) => (
@@ -194,6 +225,7 @@ export function ChallengeScreen() {
           xp={verdict.xpAwarded ?? 0}
           badges={verdict.newBadges ?? []}
           firstAttempt={verdict.attemptNo === 1 && hintsShown === 0}
+          streak={verdict.streak ?? 0}
           onDone={nextAssignment}
         />
       ) : verdict ? (
@@ -203,17 +235,39 @@ export function ChallengeScreen() {
   );
 }
 
-/** @param {{ source: string }} props */
-function CodeBlock({ source }) {
+/**
+ * Code with line numbers. When `onPick` is given the lines become choosable,
+ * which is the whole interaction for a spot item -- no editor, no typing, one
+ * decision per line.
+ *
+ * @param {{ source: string, picked?: number[], onPick?: (line: number) => void }} props
+ */
+function CodeBlock({ source, picked = [], onPick }) {
   const lines = source.split("\n");
+  const pickable = typeof onPick === "function";
   return (
-    <pre className="code">
-      {lines.map((line, i) => (
-        <span className="code__line" key={i}>
-          <span className="code__num">{i + 1}</span>
-          <span className="code__text">{line || " "}</span>
-        </span>
-      ))}
+    <pre className={pickable ? "code code--pickable" : "code"} role={pickable ? "listbox" : undefined}
+         aria-multiselectable={pickable ? "true" : undefined}>
+      {lines.map((line, i) => {
+        const n = i + 1;
+        const on = picked.includes(n);
+        const Tag = pickable ? "button" : "span";
+        return (
+          <Tag
+            className={`code__line${on ? " code__line--picked" : ""}`}
+            key={i}
+            {...(pickable ? {
+              type: "button",
+              role: "option",
+              "aria-selected": on,
+              onClick: () => onPick(n)
+            } : {})}
+          >
+            <span className="code__num">{n}</span>
+            <span className="code__text">{line || " "}</span>
+          </Tag>
+        );
+      })}
     </pre>
   );
 }

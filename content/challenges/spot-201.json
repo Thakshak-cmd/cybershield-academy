@@ -1,0 +1,31 @@
+{
+  "id": "spot-201",
+  "title": "Which line hands the browser something to execute?",
+  "skill": "xss",
+  "subSkill": "xss.output-encoding",
+  "tier": "beginner",
+  "format": "spot",
+  "validator": "spot",
+  "repo": "aurora-store",
+  "file": "public/profile.js",
+  "reportedBy": "Priya (Support)",
+  "masteryRequired": 0.0,
+  "isDrill": true,
+  "isBoss": false,
+  "requires": null,
+  "brief": "A customer set their display name to something with angle brackets in it and now the account page runs it. Point at the line that parses their name as markup.",
+  "vulnerable": "function renderProfile(user) {\n  const panel = document.querySelector('#profile');\n  const heading = document.createElement('h2');\n  heading.textContent = user.displayName;\n  const bio = document.createElement('p');\n  bio.innerHTML = user.bio;\n  panel.append(heading, bio);\n}",
+  "flawedLines": [6],
+  "decoyLines": {
+    "4": "textContent is the safe one — it displays the text and never parses it",
+    "7": "appending elements is fine; the question is what went into them",
+    "2": "finding the panel involves no user input"
+  },
+  "attackSuite": [{ "payload": "<img src=x onerror=alert(1)>", "label": "No script tag needed" }],
+  "functionalSuite": [{ "value": "Loves a bargain & a good kettle", "label": "A bio with an ampersand" }],
+  "hints": [
+    "Two lines put user text into the page. They use different properties.",
+    "One property means 'treat this as text'. The other means 'treat this as HTML'."
+  ],
+  "xp": { "firstAttempt": 30, "withHints": 15, "retry": 10 }
+}

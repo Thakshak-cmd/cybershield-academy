@@ -40,6 +40,8 @@
   padding: 3px 8px;
 }
 
+.reward__flag--streak { color: var(--accent); border-color: var(--accent); }
+
 .reward__xp { display: flex; align-items: baseline; gap: 8px; }
 .reward__xpval {
   font-size: 34px;

@@ -1,0 +1,31 @@
+{
+  "id": "spot-301",
+  "title": "Which endpoint can another site trigger?",
+  "skill": "csrf",
+  "subSkill": "csrf.token",
+  "tier": "beginner",
+  "format": "spot",
+  "validator": "spot",
+  "repo": "aurora-store",
+  "file": "routes/account.js",
+  "reportedBy": "Marcus (Incident Response)",
+  "masteryRequired": 0.0,
+  "isDrill": true,
+  "isBoss": false,
+  "requires": null,
+  "brief": "Three account routes. Two of them check that the request really came from Aurora's own page. Point at the handler that doesn't.",
+  "vulnerable": "app.get('/api/account', requireAuth, (req, res) => {\n  res.json(getAccount(req.session.userId));\n});\n\napp.post('/api/account/email', requireAuth, verifyCsrf, (req, res) => {\n  setEmail(req.session.userId, req.body.email);\n});\n\napp.post('/api/account/password', requireAuth, (req, res) => {\n  setPassword(req.session.userId, req.body.password);\n});",
+  "flawedLines": [9],
+  "decoyLines": {
+    "1": "a GET that only reads is not the target of a forged request — nothing changes",
+    "5": "this one has verifyCsrf in its chain; the forged request will not carry a valid token",
+    "10": "the body of the handler is fine; the missing check is on the line that declares it"
+  },
+  "attackSuite": [{ "payload": "<form action=\"/api/account/password\" method=\"POST\"> auto-submitted", "label": "From another site" }],
+  "functionalSuite": [{ "value": "A customer changing their own password", "label": "Still needs to work" }],
+  "hints": [
+    "Look at the middleware list on each route. What is present on one POST and absent on the other?",
+    "A GET that only reads is not the danger. Find the state-changing route with the shortest middleware chain."
+  ],
+  "xp": { "firstAttempt": 30, "withHints": 15, "retry": 10 }
+}

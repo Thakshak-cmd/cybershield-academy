@@ -27,6 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Sequence
 
+from .model import LITERATURE_PRIORS
+
 __all__ = ["Candidate", "Recommendation", "recommend", "unlocked_nodes", "boss_unlocked"]
 
 
@@ -168,8 +170,33 @@ def recommend(
         )
 
     skill = min(by_skill, key=lambda s: (mastery.get(s, 0.0), s))
-    choice = sorted(by_skill[skill], key=within_skill)[0]
     level = mastery.get(skill, 0.0)
+
+    # Cold start: a learner who has never touched this skill gets its drill first.
+    #
+    # Ordinary ordering prefers fresh content over a drill, which is right once
+    # the learner is moving -- it is what stops drills being ground forever. But
+    # for first contact it hands a novice a full patching task with no warm-up.
+    # The drill is a thirty-second "point at the line" that also gives the model
+    # its first observation before anything expensive is attempted.
+    #
+    # "Never touched" means mastery still sits at the prior, which only holds
+    # before the first observation. After that, the usual rule takes over, so
+    # this cannot become a way of grinding drills.
+    untouched = abs(level - LITERATURE_PRIORS.p_init) < 1e-9
+    drills = [c for c in by_skill[skill] if c.is_drill]
+    if untouched and drills:
+        choice = sorted(drills, key=within_skill)[0]
+        reason = f"{skill} is new to you -- a warm-up before anything bigger"
+        return Recommendation(
+            challenge_id=choice.challenge_id,
+            skill=skill,
+            p_mastery=level,
+            policy="bkt-adaptive",
+            reason=reason,
+        )
+
+    choice = sorted(by_skill[skill], key=within_skill)[0]
 
     if choice.is_drill:
         reason = f"{skill} is weakest at {level:.2f} and only the drill is open"

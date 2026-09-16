@@ -1,9 +1,9 @@
 // @ts-check
 import { Router } from "express";
-import { SCHEMA_VERSION } from "@cybershield/shared";
+import { SCHEMA_VERSION, deriveStreaks } from "@cybershield/shared";
 import { earnedBadges } from "../../../../content/badges.js";
 import { Challenge, Event, Progress } from "../models/index.js";
-import { append, countAttempts, countHints } from "../telemetry.js";
+import { append, countAttempts, countHints, eventsFor } from "../telemetry.js";
 import { resolveAttempt } from "../attempt-logic.js";
 
 export const attemptRouter = Router();
@@ -59,20 +59,33 @@ async function awardBadges({ subjectId, clearedAfter, already }) {
 attemptRouter.post("/challenges/:id/attempt", async (req, res, next) => {
   try {
     const { subjectId, sessionId, isStudyParticipant } = req.auth;
-    const { source, durationMs = 0 } = req.body ?? {};
-
-    if (typeof source !== "string" || !source.trim()) {
-      return res.status(400).json({ error: "A patch is required." });
-    }
-    if (Buffer.byteLength(source, "utf8") > MAX_SUBMISSION_BYTES) {
-      // Parsing is CPU-bound and this runs in a function with a hard time limit.
-      return res.status(413).json({ error: "That patch is too large to check." });
-    }
+    const { source, lines, durationMs = 0 } = req.body ?? {};
 
     const challenge = /** @type {LeanChallenge | null} */ (
       await Challenge.findOne({ id: req.params.id }).lean()
     );
     if (!challenge) return res.status(404).json({ error: "No such challenge." });
+
+    /** @type {string | number[]} */
+    let submission;
+    if (challenge.format === "spot") {
+      if (!Array.isArray(lines) || !lines.length) {
+        return res.status(400).json({ error: "Choose a line." });
+      }
+      if (lines.length > 50 || !lines.every(n => Number.isInteger(n))) {
+        return res.status(400).json({ error: "Those line numbers don't make sense." });
+      }
+      submission = lines;
+    } else {
+      if (typeof source !== "string" || !source.trim()) {
+        return res.status(400).json({ error: "A patch is required." });
+      }
+      if (Buffer.byteLength(source, "utf8") > MAX_SUBMISSION_BYTES) {
+        // Parsing is CPU-bound and this runs in a function with a hard time limit.
+        return res.status(413).json({ error: "That patch is too large to check." });
+      }
+      submission = source;
+    }
 
     const [priorAttempts, hintsUsed, progress] = await Promise.all([
       countAttempts(subjectId, challenge.id),
@@ -82,7 +95,7 @@ attemptRouter.post("/challenges/:id/attempt", async (req, res, next) => {
 
     const alreadySolved = !!progress?.solvedChallenges?.includes(challenge.id);
 
-    const outcome = resolveAttempt(challenge, source, {
+    const outcome = resolveAttempt(challenge, submission, {
       subjectId,
       sessionId,
       isStudyParticipant,
@@ -141,6 +154,7 @@ attemptRouter.post("/challenges/:id/attempt", async (req, res, next) => {
       attemptNo: priorAttempts + 1,
       xpAwarded: outcome.xpAwarded,
       newBadges,
+      streak: deriveStreaks(await eventsFor(subjectId)).solve,
       // Surfaced so the client can explain why an attempt did or did not move the
       // character sheet, rather than the mastery bar appearing to freeze at random.
       countedForMastery: outcome.bktObservation !== null

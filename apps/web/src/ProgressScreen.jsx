@@ -69,9 +69,21 @@ export function ProgressScreen({ onOpenChallenge }) {
               <span className="sheet__rankname">{rank.name}</span>
               <span className="label sheet__sub">Aurora Store · Blue Team</span>
             </span>
-            <span className="sheet__xp">
-              <span className="sheet__xpval pixel">{data.xp}</span>
-              <span className="label">xp</span>
+            <span className="sheet__tallies">
+              <span className="sheet__tally">
+                <span className="sheet__xpval pixel">{data.xp}</span>
+                <span className="label">xp</span>
+              </span>
+              <span className="sheet__tally" title="Consecutive unaided first-attempt solves">
+                <span className="sheet__streakval pixel">{data.streaks?.solve ?? 0}</span>
+                <span className="label">streak</span>
+              </span>
+              {(data.streaks?.days ?? 0) >= 2 && (
+                <span className="sheet__tally" title="Consecutive active days">
+                  <span className="sheet__streakval pixel">{data.streaks.days}</span>
+                  <span className="label">days</span>
+                </span>
+              )}
             </span>
           </div>
 

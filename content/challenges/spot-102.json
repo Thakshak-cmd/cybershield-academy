@@ -1,0 +1,31 @@
+{
+  "id": "spot-102",
+  "title": "One of these queries is safe and one is not",
+  "skill": "sqli",
+  "subSkill": "sqli.parameterised-query",
+  "tier": "beginner",
+  "format": "spot",
+  "validator": "spot",
+  "repo": "aurora-store",
+  "file": "routes/orders.js",
+  "reportedBy": "Priya (Support)",
+  "masteryRequired": 0.3,
+  "isDrill": true,
+  "isBoss": false,
+  "requires": null,
+  "brief": "Two lookups side by side. They look almost identical. One of them is the reason a customer could see someone else's order.",
+  "vulnerable": "async function findOrder(ref, userId) {\n  const byUser = await db.query(\n    'SELECT * FROM orders WHERE user_id = ?', [userId]\n  );\n  const byRef = await db.query(\n    `SELECT * FROM orders WHERE reference = '${ref}'`\n  );\n  return byRef[0] ?? byUser[0];\n}",
+  "flawedLines": [6],
+  "decoyLines": {
+    "3": "this one binds userId as a parameter — the database sees it as a value, never as SQL",
+    "2": "the call itself is fine; look at the statement it is given",
+    "8": "picking a result is not where injection happens"
+  },
+  "attackSuite": [{ "payload": "' OR 1=1 --", "label": "Returns every order" }],
+  "functionalSuite": [{ "value": "AUR-40221", "label": "A real reference" }],
+  "hints": [
+    "Compare how the two statements get their value in. One uses a placeholder.",
+    "Backticks with ${} inside a SELECT are the tell."
+  ],
+  "xp": { "firstAttempt": 30, "withHints": 15, "retry": 10 }
+}

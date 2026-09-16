@@ -1,6 +1,6 @@
 // @ts-check
 import { createHash } from "node:crypto";
-import { validate } from "@cybershield/validator";
+import { validate, validateSpot } from "@cybershield/validator";
 import { SCHEMA_VERSION, countsForBkt } from "@cybershield/shared";
 
 export { SCHEMA_VERSION };
@@ -10,6 +10,9 @@ export { SCHEMA_VERSION };
 /**
  * @typedef {object} ChallengeDef
  * @property {string} id
+ * @property {string} [format]
+ * @property {number[]} [flawedLines]
+ * @property {string} [vulnerable]
  * @property {import("@cybershield/shared").TopLevelSkill} skill
  * @property {import("@cybershield/shared").SubSkill} [subSkill]
  * @property {import("@cybershield/shared").Validator} validator
@@ -77,10 +80,10 @@ export const isBktObservation = countsForBkt;
 
 /**
  * @param {ChallengeDef} challenge
- * @param {string} source  the submitted patch
+ * @param {string | number[]} submission  a patch, or the lines chosen for a spot item
  * @param {AttemptContext} context
  */
-export function resolveAttempt(challenge, source, context) {
+export function resolveAttempt(challenge, submission, context) {
   const {
     subjectId, sessionId, isStudyParticipant = false,
     priorAttempts = 0, hintsUsed = 0, durationMs = 0,
@@ -88,7 +91,13 @@ export function resolveAttempt(challenge, source, context) {
     occurredAt = new Date()
   } = context;
 
-  const verdict = validate(challenge, source);
+  // A spot item is answered with line numbers, everything else with a patch. Both
+  // produce the same verdict shape, so nothing downstream needs to know which.
+  const isSpot = challenge.format === "spot";
+  const verdict = isSpot
+    ? validateSpot(/** @type {any} */ (challenge), /** @type {number[]} */ (submission))
+    : validate(challenge, /** @type {string} */ (submission));
+  const source = isSpot ? JSON.stringify(submission) : /** @type {string} */ (submission);
   const attemptNo = priorAttempts + 1;
   const passed = verdict.passed;
 

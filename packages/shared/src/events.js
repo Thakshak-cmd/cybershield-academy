@@ -194,3 +194,88 @@ export function followRate(events) {
   if (!resolved.length) return NaN;
   return resolved.filter(r => r.followed).length / resolved.length;
 }
+
+/**
+ * Streaks, derived from the log.
+ *
+ * Two kinds. The solve streak is consecutive unaided first-attempt successes,
+ * broken by an unaided first-attempt failure -- hint-assisted and retry solves
+ * neither extend nor break it, since they are not evidence about skill. The day
+ * streak is consecutive calendar days with at least one attempt.
+ *
+ * Neither is stored. A stored counter is the denormalised state the append-only
+ * model exists to avoid, and one that drifted from the log would be a silent lie
+ * on the character sheet.
+ *
+ * @param {TelemetryEvent[]} events
+ * @param {{ now?: Date }} [opts]
+ * @returns {{ solve: number, bestSolve: number, days: number }}
+ */
+export function deriveStreaks(events, { now = new Date() } = {}) {
+  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+
+  let solve = 0;
+  let bestSolve = 0;
+  for (const e of ordered) {
+    if (e.type !== "challenge.attempted" || !e.payload.countsForBkt) continue;
+    if (e.payload.correct) {
+      solve++;
+      bestSolve = Math.max(bestSolve, solve);
+    } else {
+      solve = 0;
+    }
+  }
+
+  // Day streak: walk back from today over the set of active days.
+  const days = new Set(
+    ordered
+      .filter(e => e.type === "challenge.attempted")
+      .map(e => dayKey(new Date(e.occurredAt)))
+  );
+  let dayStreak = 0;
+  const cursor = new Date(now);
+  // A learner who has not yet acted today still holds yesterday's streak.
+  if (!days.has(dayKey(cursor))) cursor.setUTCDate(cursor.getUTCDate() - 1);
+  while (days.has(dayKey(cursor))) {
+    dayStreak++;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+
+  return { solve, bestSolve, days: dayStreak };
+}
+
+/** @param {Date} d */
+function dayKey(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Milliseconds from signing in to the first thing the learner actually did.
+ *
+ * The metric behind "first line of code in two minutes". Measured per session
+ * from `session.started` to the first `challenge.attempted`; a session with no
+ * attempt contributes nothing rather than an infinite value.
+ *
+ * @param {TelemetryEvent[]} events
+ * @returns {{ sessionId: string, ms: number }[]}
+ */
+export function timeToFirstAction(events) {
+  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  /** @type {Map<string, Date>} */
+  const started = new Map();
+  /** @type {{ sessionId: string, ms: number }[]} */
+  const out = [];
+  const seen = new Set();
+
+  for (const e of ordered) {
+    if (e.type === "session.started") started.set(e.sessionId, new Date(e.occurredAt));
+    if (e.type === "challenge.attempted" && !seen.has(e.sessionId)) {
+      const t0 = started.get(e.sessionId);
+      if (t0) {
+        out.push({ sessionId: e.sessionId, ms: new Date(e.occurredAt).getTime() - t0.getTime() });
+        seen.add(e.sessionId);
+      }
+    }
+  }
+  return out;
+}

@@ -114,3 +114,77 @@ export function validateStages(challenge, sources) {
     secured: stages.filter(s => s.passed).map(s => s.component)
   };
 }
+
+/**
+ * Score a spot-the-flaw answer.
+ *
+ * The learner picks a line rather than writing a patch. The verdict shape matches
+ * `validate` -- a security suite and a functional suite -- so the interface, the
+ * telemetry and BKT treat it exactly like any other attempt. The security suite
+ * is "found the flaw"; the functional suite is "did not accuse innocent code",
+ * which keeps the two-suite tension even here: clicking every line is not an
+ * answer.
+ *
+ * A challenge may name several flawed lines (a multi-line template literal, say).
+ * Any one of them is a hit; the learner is not being asked to enumerate.
+ *
+ * @param {{ flawedLines: number[], vulnerable: string, decoyLines?: Record<number, string> }} challenge
+ * @param {number[]} selected  1-based line numbers the learner chose
+ */
+export function validateSpot(challenge, selected) {
+  const chosen = [...new Set((selected || []).map(Number).filter(Number.isInteger))];
+  const flawed = new Set(challenge.flawedLines || []);
+  const lineCount = (challenge.vulnerable || "").split("\n").length;
+
+  const outOfRange = chosen.filter(n => n < 1 || n > lineCount);
+  const hits = chosen.filter(n => flawed.has(n));
+  const misses = chosen.filter(n => !flawed.has(n) && n >= 1 && n <= lineCount);
+
+  const found = hits.length > 0;
+  // More than one wrong accusation, or wrong accusations outnumbering hits,
+  // means the learner is guessing rather than reading.
+  const precise = misses.length === 0;
+
+  /** Why a particular wrong line was tempting, if the author said so. */
+  const decoy = n => challenge.decoyLines?.[n] ?? null;
+
+  const security = [{
+    id: "spot.found-the-flaw",
+    kind: "security",
+    describe: "The line that lets the attack in is identified",
+    pass: found,
+    evidence: found ? null
+      : chosen.length === 0 ? "no line was chosen"
+      : `line${chosen.length > 1 ? "s" : ""} ${chosen.join(", ")} ${chosen.length > 1 ? "are" : "is"} not where the input becomes dangerous`
+  }];
+
+  const functional = [{
+    id: "spot.no-false-accusation",
+    kind: "functional",
+    describe: "Sound code is not flagged as the problem",
+    pass: precise,
+    evidence: precise ? null
+      : misses.map(n => decoy(n) ? `line ${n}: ${decoy(n)}` : `line ${n} is sound`).join("; ")
+  }];
+
+  if (outOfRange.length) {
+    functional.push({
+      id: "spot.line-exists",
+      kind: "functional",
+      describe: "Chosen lines exist",
+      pass: false,
+      evidence: `line${outOfRange.length > 1 ? "s" : ""} ${outOfRange.join(", ")} not in the snippet`
+    });
+  }
+
+  const all = [...security, ...functional];
+  const bucket = list => ({ passed: list.filter(r => r.pass).length, total: list.length, results: list });
+
+  return {
+    passed: all.every(r => r.pass),
+    parseError: null,
+    security: bucket(security),
+    functional: bucket(functional),
+    failedRules: all.filter(r => !r.pass).map(r => r.id)
+  };
+}

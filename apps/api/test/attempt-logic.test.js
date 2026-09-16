@@ -136,3 +136,35 @@ describe("resolveAttempt", () => {
     }
   });
 });
+
+
+describe("spot-the-flaw attempts", () => {
+  const spot = {
+    id: "spot-t", skill: "sqli", format: "spot", validator: "spot",
+    vulnerable: "one\ntwo\nthree", flawedLines: [2],
+    xp: { firstAttempt: 30, withHints: 15, retry: 10 }
+  };
+
+  test("a correct line is a solve and a BKT observation", () => {
+    const r = resolveAttempt(/** @type {any} */ (spot), [2], ctx());
+    assert.equal(r.verdict.passed, true);
+    assert.equal(r.xpAwarded, 30);
+    // This is the whole reason the format exists: cheap, fast, and every one
+    // is evidence about skill.
+    assert.deepEqual(r.bktObservation, { skill: "sqli", correct: true });
+  });
+
+  test("a wrong line is a failed observation, not an error", () => {
+    const r = resolveAttempt(/** @type {any} */ (spot), [1], ctx());
+    assert.equal(r.verdict.passed, false);
+    assert.deepEqual(r.bktObservation, { skill: "sqli", correct: false });
+    assert.ok(r.verdict.failedRules.includes("spot.found-the-flaw"));
+  });
+
+  test("the event records the choice as a hash, never the lines", () => {
+    // Consistent with patches: what was submitted is fingerprinted, not stored.
+    const r = resolveAttempt(/** @type {any} */ (spot), [2], ctx());
+    assert.match(r.events[0].payload.submissionHash, /^[0-9a-f]{16}$/);
+    assert.ok(!("lines" in r.events[0].payload));
+  });
+});

@@ -15,9 +15,9 @@ import "./Reward.css";
  * one thing a static number cannot: making the size of the reward felt rather
  * than read.
  *
- * @param {{ xp: number, badges: string[], firstAttempt: boolean, onDone?: () => void }} props
+ * @param {{ xp: number, badges: string[], firstAttempt: boolean, streak?: number, onDone?: () => void }} props
  */
-export function Reward({ xp, badges = [], firstAttempt, onDone }) {
+export function Reward({ xp, badges = [], firstAttempt, streak = 0, onDone }) {
   const shown = useCountUp(xp, 900);
 
   return (
@@ -27,6 +27,9 @@ export function Reward({ xp, badges = [], firstAttempt, onDone }) {
       <div className="reward__head">
         <span className="reward__title pixel">Hole closed</span>
         {firstAttempt && <span className="reward__flag label">first attempt, unaided</span>}
+        {streak >= 2 && (
+          <span className="reward__flag reward__flag--streak label">{streak} in a row</span>
+        )}
       </div>
 
       <div className="reward__xp">

@@ -28,8 +28,10 @@
 .sheet__rankname { display: block; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
 .sheet__sub { display: block; }
 
-.sheet__xp { margin-left: auto; display: flex; align-items: baseline; gap: 6px; }
+.sheet__tallies { margin-left: auto; display: flex; gap: 18px; }
+.sheet__tally { display: flex; align-items: baseline; gap: 6px; }
 .sheet__xpval { font-size: 20px; color: var(--secure); }
+.sheet__streakval { font-size: 20px; color: var(--accent); }
 
 .sheet__stats { display: flex; flex-direction: column; gap: 18px; }
 

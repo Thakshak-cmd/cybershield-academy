@@ -141,6 +141,36 @@ class TestRecommendation:
         assert rec is not None and rec.reason and rec.policy == "bkt-adaptive"
 
 
+class TestColdStart:
+    def test_a_never_touched_skill_gets_its_drill_first(self):
+        # First contact is a thirty-second warm-up, not a full patch.
+        rec = recommend(build_tree(), {s: LITERATURE_PRIORS.p_init for s in SKILLS}, cleared=set())
+        assert rec is not None and rec.challenge_id.endswith(".drill")
+        assert "warm-up" in rec.reason
+
+    def test_one_observation_ends_the_cold_start(self):
+        # After that, fresh content wins -- so this cannot become drill grinding.
+        mastery = {s: LITERATURE_PRIORS.p_init for s in SKILLS}
+        _, mastery["csrf"] = update(mastery["csrf"], True, LITERATURE_PRIORS)
+        # csrf is now the strongest; sqli and xss are untouched and get drills.
+        rec = recommend(build_tree(), mastery, cleared=set())
+        assert rec is not None and rec.skill in ("sqli", "xss") and rec.challenge_id.endswith(".drill")
+
+        # Once every skill has been touched, no drill is served while fresh content is open.
+        for s in SKILLS:
+            _, mastery[s] = update(mastery[s], True, LITERATURE_PRIORS)
+        rec = recommend(build_tree(), mastery, cleared=set())
+        assert rec is not None and not rec.challenge_id.endswith(".drill")
+
+    def test_a_skill_with_no_drill_falls_through(self):
+        # A catalogue whose entry point is a real challenge rather than a drill.
+        # Without one at the prior, a fresh learner is correctly served nothing.
+        tree = [c for c in build_tree() if not c.is_drill]
+        tree.append(Candidate("sqli.entry", "sqli", 0.0))
+        rec = recommend(tree, {s: LITERATURE_PRIORS.p_init for s in SKILLS}, cleared=set())
+        assert rec is not None and rec.challenge_id == "sqli.entry"
+
+
 class TestFailureModes:
     """The three ways this policy has already been got wrong."""
 

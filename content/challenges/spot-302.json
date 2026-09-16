@@ -1,0 +1,31 @@
+{
+  "id": "spot-302",
+  "title": "The token check is there. It is also useless.",
+  "skill": "csrf",
+  "subSkill": "csrf.token",
+  "tier": "intermediate",
+  "format": "spot",
+  "validator": "spot",
+  "repo": "aurora-store",
+  "file": "middleware/csrf.js",
+  "reportedBy": "Marcus (Incident Response)",
+  "masteryRequired": 0.45,
+  "isDrill": true,
+  "isBoss": false,
+  "requires": null,
+  "brief": "Marcus reviewed the CSRF middleware and it looks right at a glance. Find the line that makes the whole check pass for any request at all.",
+  "vulnerable": "function verifyCsrf(req, res, next) {\n  const expected = req.session.csrfToken;\n  const supplied = req.body.csrfToken || req.get('x-csrf-token');\n  if (!expected) return next();\n  if (supplied !== expected) {\n    return res.status(403).json({ error: 'Bad token' });\n  }\n  next();\n}",
+  "flawedLines": [4],
+  "decoyLines": {
+    "3": "accepting the token from body or header is normal — both are things a cross-site form cannot set",
+    "5": "the comparison itself is correct",
+    "2": "reading the expected token from the session is exactly right"
+  },
+  "attackSuite": [{ "payload": "Any request against a session that never received a token", "label": "Skips the check entirely" }],
+  "functionalSuite": [{ "value": "A form on Aurora's own page carrying its token", "label": "Still passes" }],
+  "hints": [
+    "What happens when the session has no token yet? Trace that path.",
+    "A missing expected value should fail closed, not open."
+  ],
+  "xp": { "firstAttempt": 45, "withHints": 20, "retry": 15 }
+}

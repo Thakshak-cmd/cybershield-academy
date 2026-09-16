@@ -84,7 +84,8 @@ before(async () => {
       unlocked: []
     }),
     loadProgress: async () => ({ xp: 120, badges: [] }),
-    loadTitles: async () => ({ "sec-101": { title: "The product search box", tier: "beginner" } })
+    loadTitles: async () => ({ "sec-101": { title: "The product search box", tier: "beginner" } }),
+    loadEvents: async () => []
   }));
   app.use((err, _req, res, _next) => res.status(500).json({ error: err.message }));
 
@@ -164,6 +165,37 @@ describe("GET /api/next", () => {
     // Model and content are out of sync; recording a serve for a challenge the
     // learner never saw would corrupt the follow-rate measurement.
     assert.equal(appended.length, 0);
+  });
+});
+
+describe("spot items over the wire", () => {
+  test("ship how many lines to pick, never which, and never the decoys", async () => {
+    mlBehaviour = "ok";
+    const spot = {
+      id: "spot-x", title: "Which line?", skill: "sqli", tier: "beginner", format: "spot",
+      vulnerable: "a\nb\nc", flawedLines: [2], decoyLines: { 1: "reads only", 3: "sound" },
+      hints: ["h"], attackSuite: [], functionalSuite: []
+    };
+    const app = express();
+    app.use((req, _res, nxt) => { req.auth = { subjectId: "s", sessionId: "x", isStudyParticipant: false }; nxt(); });
+    app.use("/api", createNextRouter({
+      mlClient: fakeMl,
+      append: async (_s, ev) => ev.map((e, i) => ({ ...e, seq: i + 1 })),
+      findChallenge: async () => spot,
+      loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] })
+    }));
+    const srv = app.listen(0);
+    await new Promise(r => srv.once("listening", r));
+    const port = /** @type {import("node:net").AddressInfo} */ (srv.address()).port;
+    const body = await (await fetch(`http://localhost:${port}/api/challenges/spot-x/start`, { method: "POST" })).json();
+    srv.close();
+
+    assert.equal(body.challenge.flawedCount, 1);
+    const blob = JSON.stringify(body);
+    // Either of these would let a learner find the answer by elimination.
+    assert.ok(!blob.includes("flawedLines"));
+    assert.ok(!blob.includes("decoyLines"));
+    assert.ok(!blob.includes("reads only"));
   });
 });
 

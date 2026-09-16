@@ -1,0 +1,31 @@
+{
+  "id": "spot-101",
+  "title": "Which line lets the search term into the query?",
+  "skill": "sqli",
+  "subSkill": "sqli.parameterised-query",
+  "tier": "beginner",
+  "format": "spot",
+  "validator": "spot",
+  "repo": "aurora-store",
+  "file": "routes/products.js",
+  "reportedBy": "Dan (QA)",
+  "masteryRequired": 0.0,
+  "isDrill": true,
+  "isBoss": false,
+  "requires": null,
+  "brief": "Dan's found another search box that misbehaves. No patch this time — just point at the line where the customer's input stops being data and becomes part of the statement.",
+  "vulnerable": "app.get('/api/products', async (req, res) => {\n  const { q, sort } = req.query;\n  const order = sort === 'price' ? 'price' : 'name';\n  const sql = `SELECT * FROM products WHERE name LIKE '%${q}%' ORDER BY ${order}`;\n  const rows = await db.query(sql);\n  res.json(rows);\n});",
+  "flawedLines": [4],
+  "decoyLines": {
+    "2": "reading a value from the request is fine — it is what happens to it next that matters",
+    "3": "sort is checked against a fixed list before use, so it can only ever be one of two safe strings",
+    "5": "the query is already built by this point; the damage was done on the line above"
+  },
+  "attackSuite": [{ "payload": "' OR '1'='1", "label": "The term ends the string early" }],
+  "functionalSuite": [{ "value": "kettle", "label": "An ordinary search" }],
+  "hints": [
+    "Two things from the request reach the query. Only one of them gets there unchanged.",
+    "Look for the line where a customer's text is spliced into a string that the database will run."
+  ],
+  "xp": { "firstAttempt": 30, "withHints": 15, "retry": 10 }
+}

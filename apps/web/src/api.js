@@ -27,6 +27,7 @@
  * @property {number} attackCount
  * @property {number} functionalCount
  * @property {number} hintCount
+ * @property {number} [flawedCount]  spot items only: how many lines to pick
  */
 
 /**
@@ -54,6 +55,7 @@
  * @property {number} [xpAwarded]
  * @property {boolean} [countedForMastery]
  * @property {string[]} [newBadges]  ids earned by this attempt, in award order
+ * @property {number} [streak]        consecutive unaided first-attempt solves, after this one
  */
 
 const TOKEN_KEY = "cybershield.token";
@@ -227,15 +229,24 @@ export const api = {
     return call(`/api/challenges/${challengeId}/start`, { method: "POST" });
   },
 
-  async attempt(challengeId, source, durationMs) {
+  /**
+   * @param {string} challengeId
+   * @param {string | number[]} submission  a patch, or the lines chosen for a spot item
+   * @param {number} durationMs
+   */
+  async attempt(challengeId, submission, durationMs) {
     if (!(await this.connect())) {
-      const verdict = fixtureVerdict(source);
+      const verdict = fixtureVerdict(typeof submission === "string" ? submission : "");
       return { ...verdict, attemptNo: 1, xpAwarded: verdict.passed ? 80 : 0,
-               countedForMastery: true, newBadges: verdict.passed ? ["first-patch"] : [] };
+               countedForMastery: true, newBadges: verdict.passed ? ["first-patch"] : [],
+               streak: verdict.passed ? 1 : 0 };
     }
+    const body = Array.isArray(submission)
+      ? { lines: submission, durationMs }
+      : { source: submission, durationMs };
     return call(`/api/challenges/${challengeId}/attempt`, {
       method: "POST",
-      body: JSON.stringify({ source, durationMs })
+      body: JSON.stringify(body)
     });
   },
 
@@ -248,6 +259,7 @@ export const api = {
         capstoneUnlocked: false,
         xp: 0,
         badges: [],
+        streaks: { solve: 0, bestSolve: 0, days: 0 },
         degraded: false,
         nodes: [
           { id: "sec-101", skill: "sqli", masteryRequired: 0, isDrill: false, isBoss: false, requires: null },

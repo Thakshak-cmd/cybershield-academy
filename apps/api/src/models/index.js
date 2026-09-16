@@ -93,6 +93,11 @@ const ChallengeSchema = new Schema({
   // seeded the encounter with its stages stripped and no error anywhere.
   stages: { type: [Schema.Types.Mixed], default: undefined },
 
+  // Spot-the-flaw: which lines are the answer, and why the tempting wrong ones
+  // are wrong. Mixed for decoyLines because its keys are line numbers.
+  flawedLines: { type: [Number], default: undefined },
+  decoyLines: { type: Schema.Types.Mixed, default: undefined },
+
   meta: { type: Schema.Types.Mixed, default: {} },
   rules: { type: [String], default: [] },
   attackSuite: { type: [Schema.Types.Mixed], default: [] },

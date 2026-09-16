@@ -1,0 +1,31 @@
+{
+  "id": "spot-202",
+  "title": "The escaping is there — so why does it still run?",
+  "skill": "xss",
+  "subSkill": "xss.sanitisation",
+  "tier": "intermediate",
+  "format": "spot",
+  "validator": "spot",
+  "repo": "aurora-store",
+  "file": "public/comments.js",
+  "reportedBy": "Dan (QA)",
+  "masteryRequired": 0.45,
+  "isDrill": true,
+  "isBoss": false,
+  "requires": null,
+  "brief": "Someone already added escaping to this. It still runs Dan's payload. Find the one place the escaped value is not the one that gets used.",
+  "vulnerable": "function renderComment(c) {\n  const safeBody = escapeHtml(c.body);\n  const safeName = escapeHtml(c.author);\n  const el = document.createElement('div');\n  el.innerHTML = `<b>${safeName}</b>: ${c.body}`;\n  document.querySelector('#comments').append(el);\n}",
+  "flawedLines": [5],
+  "decoyLines": {
+    "2": "this escapes the body correctly — the problem is that nothing uses the result",
+    "3": "this escapes the author correctly, and it is used",
+    "6": "appending is not where content is parsed"
+  },
+  "attackSuite": [{ "payload": "<svg onload=alert(1)>", "label": "In the body, not the name" }],
+  "functionalSuite": [{ "value": "Great value & quick delivery", "label": "A comment with an ampersand" }],
+  "hints": [
+    "safeBody is computed. Is it used?",
+    "Read the template on the innerHTML line slowly. One of the two values is the raw one."
+  ],
+  "xp": { "firstAttempt": 45, "withHints": 20, "retry": 15 }
+}

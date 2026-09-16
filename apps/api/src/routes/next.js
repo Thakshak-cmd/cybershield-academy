@@ -1,8 +1,8 @@
 // @ts-check
 import { Router } from "express";
-import { SCHEMA_VERSION } from "@cybershield/shared";
+import { SCHEMA_VERSION, deriveStreaks } from "@cybershield/shared";
 import { Challenge, Progress } from "../models/index.js";
-import { append as defaultAppend, bktObservationsFor as defaultObservations } from "../telemetry.js";
+import { append as defaultAppend, bktObservationsFor as defaultObservations, eventsFor as defaultEvents } from "../telemetry.js";
 import { validateStages } from "@cybershield/validator";
 import { BADGES } from "../../../../content/badges.js";
 import { createMlClient, MlServiceError } from "../ml-client.js";
@@ -26,7 +26,8 @@ const MAX_BOSS_BYTES = 80_000;
  *   findChallenge?: (id: string) => Promise<LeanChallenge|null>,
  *   loadState?: (subjectId: string) => Promise<import("../ml-client.js").LearnerState>,
  *   loadProgress?: (subjectId: string) => Promise<{ xp?: number, badges?: string[] }|null>,
- *   loadTitles?: (ids: string[]) => Promise<Record<string, { title: string, tier: string }>>
+ *   loadTitles?: (ids: string[]) => Promise<Record<string, { title: string, tier: string }>>,
+ *   loadEvents?: (subjectId: string) => Promise<import("@cybershield/shared").TelemetryEvent[]>
  * }} [deps]
  */
 export function createNextRouter(deps = {}) {
@@ -38,6 +39,7 @@ export function createNextRouter(deps = {}) {
   const loadState = deps.loadState ?? defaultLoadState;
   const loadProgress = deps.loadProgress ?? defaultLoadProgress;
   const loadTitles = deps.loadTitles ?? defaultLoadTitles;
+  const loadEvents = deps.loadEvents ?? defaultEvents;
 
   /**
    * GET /api/next
@@ -262,9 +264,10 @@ export function createNextRouter(deps = {}) {
         degraded = true;
       }
 
-      const progress = await loadProgress(subjectId);
+      const [progress, events] = await Promise.all([loadProgress(subjectId), loadEvents(subjectId)]);
 
       res.json({
+        streaks: deriveStreaks(events),
         mastery,
         unlocked,
         capstoneUnlocked,
@@ -402,6 +405,10 @@ function publicChallenge(challenge) {
     brief: challenge.brief,
     vulnerable: challenge.vulnerable,
     // Counts only, so the interface can show "0/3 repelled" without naming them.
+    // For a spot item, how many lines to pick -- never which. decoyLines stay
+    // server-side too: shipping "why line 3 is wrong" gives the answer away by
+    // elimination.
+    flawedCount: challenge.format === "spot" ? (challenge.flawedLines || []).length : undefined,
     attackCount: (challenge.attackSuite || []).length,
     functionalCount: (challenge.functionalSuite || []).length,
     hintCount: (challenge.hints || []).length

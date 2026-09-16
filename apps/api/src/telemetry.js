@@ -93,3 +93,14 @@ export async function bktObservationsFor(subjectId) {
     correct: !!(/** @type {any} */ (r).payload.correct)
   }));
 }
+
+/**
+ * The subject's full event log, ordered. For derivations that need everything --
+ * streaks, follow rate, time to first action -- rather than one event type.
+ *
+ * @param {string} subjectId
+ * @returns {Promise<import("@cybershield/shared").TelemetryEvent[]>}
+ */
+export async function eventsFor(subjectId) {
+  return /** @type {any} */ (Event.find({ subjectId }).sort({ seq: 1 }).lean());
+}

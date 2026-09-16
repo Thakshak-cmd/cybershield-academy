@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { validate, validateStages, RULES } from "../src/index.js";
+import { validate, validateStages, validateSpot, RULES } from "../src/index.js";
 import { REFERENCE_PATCHES, BOSS_REFERENCE_PATCHES } from "../../../content/reference-patches.js";
 
 /**
@@ -22,10 +22,11 @@ const all = readdirSync(CONTENT)
   .filter(f => f.endsWith(".json"))
   .map(f => JSON.parse(readFileSync(join(CONTENT, f), "utf8")));
 
-// A boss carries its rules per stage, so the single-file assertions below do not
-// apply to it. Splitting here rather than special-casing each test.
-const challenges = all.filter(c => !c.stages);
+// Three shapes of challenge, each with its own assertions. Splitting here rather
+// than special-casing inside each test.
+const challenges = all.filter(c => !c.stages && c.format !== "spot");
 const bosses = all.filter(c => c.stages);
+const spots = all.filter(c => c.format === "spot");
 
 const PRIOR_MASTERY = 0.15;
 
@@ -246,6 +247,68 @@ describe("boss reference patches score as intended", () => {
       assert.ok(oneTechnique, `${id} has no "same technique everywhere" reference patch`);
       assert.ok(oneTechnique.expectPassed.length < boss.stages.length,
         `${id} can be cleared with a single technique`);
+    });
+  }
+});
+
+
+describe("spot-the-flaw challenges", () => {
+  test("there are several", () => {
+    // These are the observation multiplier for BKT and the pacing for a
+    // 60-minute session; a couple is not enough of either.
+    assert.ok(spots.length >= 6, `only ${spots.length} spot challenges`);
+  });
+
+  for (const c of spots) {
+    describe(c.id, () => {
+      test("names at least one flawed line inside the snippet", () => {
+        const lines = c.vulnerable.split("\n").length;
+        assert.ok(c.flawedLines?.length, `${c.id} has no flawedLines`);
+        for (const n of c.flawedLines) {
+          assert.ok(n >= 1 && n <= lines, `${c.id} flawed line ${n} is outside 1..${lines}`);
+        }
+      });
+
+      test("the flawed line actually contains something suspicious", () => {
+        // A sanity check against an off-by-one in authoring: the line pointed at
+        // should carry a recognisable sink, splice, or missing guard.
+        const lines = c.vulnerable.split("\n");
+        const text = c.flawedLines.map(n => lines[n - 1]).join("\n");
+        const suspicious = /\$\{|innerHTML|\+\s*\w+\s*\+|return next\(\)|app\.post\([^)]*requireAuth,\s*\(/.test(text);
+        assert.ok(suspicious, `${c.id} flawed line reads as sound: ${JSON.stringify(text)}`);
+      });
+
+      test("every decoy explanation points at a real, non-flawed line", () => {
+        const lines = c.vulnerable.split("\n").length;
+        for (const key of Object.keys(c.decoyLines || {})) {
+          const n = Number(key);
+          assert.ok(n >= 1 && n <= lines, `${c.id} decoy ${n} is outside the snippet`);
+          assert.ok(!c.flawedLines.includes(n), `${c.id} decoy ${n} is also a flawed line`);
+        }
+      });
+
+      test("the right answer passes and a decoy fails on accusation", () => {
+        const right = validateSpot(c, [c.flawedLines[0]]);
+        assert.equal(right.passed, true, `${c.id}: the flawed line itself does not pass`);
+
+        const decoy = Number(Object.keys(c.decoyLines || {})[0]);
+        if (decoy) {
+          const wrong = validateSpot(c, [decoy]);
+          assert.equal(wrong.passed, false);
+          assert.ok(wrong.failedRules.includes("spot.found-the-flaw"));
+          // The decoy explanation must surface as evidence, or authoring it was wasted.
+          const why = wrong.functional.results.find(r => r.id === "spot.no-false-accusation")?.evidence ?? "";
+          assert.ok(why.includes(c.decoyLines[decoy]), `${c.id}: decoy explanation not shown`);
+        }
+      });
+
+      test("is a drill, so it never gates the tree", () => {
+        // Spot items exist to be repeatable practice and to feed BKT. A spot
+        // challenge as a prerequisite would make the tree hinge on a 30-second
+        // click, which is not what "cleared" should mean.
+        assert.equal(c.isDrill, true, `${c.id} should be a drill`);
+        assert.ok(!all.some(o => o.requires === c.id), `${c.id} is a prerequisite for something`);
+      });
     });
   }
 });

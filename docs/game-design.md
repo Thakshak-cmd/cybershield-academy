@@ -137,6 +137,13 @@ time-on-task measure bonus-farming rather than engagement — confounding the st
 own dependent variable. Efficiency is therefore defined as *fewer attempts*, which
 also aligns the mechanic with the first-attempt-correctness signal BKT trains on.
 
+**Streaks are derived, not stored.** Two kinds: consecutive unaided first-attempt
+solves within a session (what matters during the study), and consecutive active
+days (what matters for return outside it). Both are computed from the event log on
+read — a stored counter is exactly the kind of denormalised state the append-only
+model exists to avoid, and a stored one that drifted from the log would be a
+silent lie on the character sheet.
+
 **Leaderboard stays opt-in.** With ~12 participants who likely know one another, a
 public ranking demotivates the lower half and complicates the ethics position. The
 proposal already says "optional"; streaks and personal bests are the prominent
