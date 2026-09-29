@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { isTier, isTopLevelSkill, isValidator } from "@cybershield/shared";
 import { connect, disconnect } from "./db.js";
@@ -90,7 +90,10 @@ function assertReachable(defs) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Compared as URLs, not by pasting the path after "file://": a path with a space
+// in it is percent-encoded in import.meta.url, so the naive check never matched
+// and running this directly did nothing, silently.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await connect();
   const ids = await seed();
   console.log(`seeded ${ids.length} challenge(s): ${ids.join(", ")}`);

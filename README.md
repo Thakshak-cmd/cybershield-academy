@@ -35,6 +35,19 @@ handle at http://localhost:5173 to begin; the study enrolment code is
 
 To run a service on its own: `npm run ml`, `npm run dev:api`, `npm run web`.
 
+### Against the real database
+
+Copy `.env.example` to `.env.local` and fill in `MONGODB_URI` (with the database
+name, `/cybershield`, before the `?`) and `JWT_SECRET`. Then:
+
+```
+npm run seed        # load the challenges; safe to repeat
+npm run dev:atlas   # the same three services, API on the real database
+```
+
+Nothing is seeded automatically in this mode, so content cannot change under a
+study session. Your IP must be on the Atlas Network Access list.
+
 ## Verifying it
 
 ```

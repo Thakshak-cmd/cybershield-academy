@@ -10,7 +10,8 @@
  * problem that is fifty lines of child_process, and it would not know how to wait
  * on a health endpoint or explain a missing virtualenv.
  *
- *   npm run dev
+ *   npm run dev          throwaway in-memory database
+ *   npm run dev:atlas    the real database named in .env.local
  *
  * Ctrl+C stops all three.
  *
@@ -34,6 +35,12 @@ const bold = s => c("1", s);
 const red = s => c("31", s);
 const green = s => c("32", s);
 
+// Against the real database the API reads .env.local and does not seed: the
+// challenges are loaded once with `npm run seed`, and reseeding on every start
+// would overwrite content mid-study.
+const ATLAS = process.argv.includes("--atlas");
+const ENV_FILE = join(ROOT, ".env.local");
+
 const SERVICES = [
   {
     name: "ml",
@@ -53,8 +60,13 @@ const SERVICES = [
     colour: "36",
     port: 3001,
     health: "http://localhost:3001/api/health",
-    command: "npm",
-    args: ["run", "dev:memory", "--workspace", "@cybershield/api"]
+    command: ATLAS ? process.execPath : "npm",
+    args: ATLAS
+      ? [`--env-file=${ENV_FILE}`, join(ROOT, "apps/api/src/server.js")]
+      : ["run", "dev:memory", "--workspace", "@cybershield/api"],
+    missing: () =>
+      ATLAS && !existsSync(ENV_FILE) &&
+      "--atlas needs .env.local with MONGODB_URI set. See .env.example."
   },
   {
     name: "web",
@@ -180,8 +192,10 @@ if (!shuttingDown) {
     console.log(`
 ${bold("  http://localhost:5173")}
 
-  ${dim("Register a handle to begin. Study code:")} ${bold("AURORA-2026")}
-  ${dim("The database is in memory and is discarded when this stops.")}
+  ${ATLAS
+    ? dim("Using the database in .env.local. Everything you do here is kept.")
+    : `${dim("Register a handle to begin. Study code:")} ${bold("AURORA-2026")}
+  ${dim("The database is in memory and is discarded when this stops.")}`}
 
   ${dim("Ctrl+C to stop all three.")}
 `);

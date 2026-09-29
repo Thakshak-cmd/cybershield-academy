@@ -12,6 +12,8 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:atlas": "node scripts/dev.mjs --atlas",
+    "seed": "node --env-file=.env.local apps/api/src/seed.js",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "tsc -p jsconfig.json",
