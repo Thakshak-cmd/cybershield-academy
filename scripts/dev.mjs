@@ -93,7 +93,10 @@ function start(service) {
   const child = spawn(service.command, service.args, {
     cwd: ROOT,
     stdio: ["ignore", "pipe", "pipe"],
-    env: process.env
+    // Each service is told its own port. An inherited PORT -- which some
+    // launchers export for the web server -- would otherwise send the API to
+    // the same port as Vite, where it silently loses.
+    env: { ...process.env, PORT: String(service.port) }
   });
   children.push(child);
 
