@@ -5,6 +5,8 @@ import { BossScreen } from "./BossScreen.jsx";
 import { AuthScreen } from "./AuthScreen.jsx";
 import { Link, useRoute } from "./useRoute.jsx";
 import { PALETTES, usePalette } from "./usePalette.js";
+import { Icon } from "./components/Icon.jsx";
+import { setSoundEnabled, soundEnabled } from "./sound.js";
 import { api } from "./api.js";
 import "./App.css";
 
@@ -14,6 +16,7 @@ export function App() {
     /** @type {{ handle: string, isStudyParticipant: boolean }|null} */ (null)
   );
   const [ready, setReady] = useState(false);
+  const [sound, setSound] = useState(soundEnabled);
   const [path, navigate] = useRoute();
 
   const { palette, setPalette, following, pinned } =
@@ -103,21 +106,39 @@ export function App() {
               ))}
             </nav>
           )}
+          {/* Pinned off for study participants, like the palette: one participant
+              hearing cues another did not would be a variable in the study. */}
+          {!pinned && (
+            <button
+              className={sound ? "swatch swatch--icon swatch--on" : "swatch swatch--icon"}
+              onClick={() => { setSoundEnabled(!sound); setSound(!sound); }}
+              aria-pressed={sound}
+              aria-label={sound ? "Sound on" : "Sound off"}
+              title={sound ? "Sound on" : "Sound off"}
+            >
+              <Icon name={sound ? "soundOn" : "soundOff"} size={15} />
+            </button>
+          )}
           {session && live && (
             <button className="swatch" onClick={signOut}>Sign out</button>
           )}
         </div>
       </header>
 
-      {!session ? (
-        <AuthScreen onAuthenticated={setSession} />
-      ) : path === "/progress" ? (
-        <ProgressScreen onOpenChallenge={() => navigate("/")} />
-      ) : path === "/boss" ? (
-        <BossScreen onLeave={() => navigate("/progress")} />
-      ) : (
-        <ChallengeScreen />
-      )}
+      {/* Keyed on the route so each screen enters rather than swapping in place.
+          One short movement, not a choreography -- navigation happens constantly
+          and anything longer becomes a delay. */}
+      <main className="route" key={session ? path : "signin"}>
+        {!session ? (
+          <AuthScreen onAuthenticated={setSession} />
+        ) : path === "/progress" ? (
+          <ProgressScreen onOpenChallenge={() => navigate("/")} />
+        ) : path === "/boss" ? (
+          <BossScreen onLeave={() => navigate("/progress")} />
+        ) : (
+          <ChallengeScreen />
+        )}
+      </main>
     </>
   );
 }

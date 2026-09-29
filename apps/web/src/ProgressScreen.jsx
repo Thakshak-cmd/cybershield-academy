@@ -3,6 +3,7 @@ import { Window } from "./components/Window.jsx";
 import { SkillTree } from "./components/SkillTree.jsx";
 import { Icon } from "./components/Icon.jsx";
 import { BadgeArt } from "./components/BadgeArt.jsx";
+import { PostureGauge } from "./components/PostureGauge.jsx";
 import { SKILL_ICONS } from "./components/icons.js";
 import { api } from "./api.js";
 import "./ProgressScreen.css";
@@ -104,18 +105,49 @@ export function ProgressScreen({ onOpenChallenge }) {
           </div>
         </Window>
 
-        <Window title="The Aurora Breach" tone={data.capstoneUnlocked ? "breach" : "quiet"}>
-          <p className="capstone__brief">
-            A single incident chaining all three vulnerabilities. It tests whether what
-            you've learned carries across, rather than one technique at a time.
-          </p>
-          <p className={data.capstoneUnlocked ? "capstone__gate capstone__gate--open" : "capstone__gate"}>
-            <Icon name={data.capstoneUnlocked ? "fracture" : "lock"} size={14} />{" "}
-            {data.capstoneUnlocked
-              ? "Unlocked — every domain is holding up."
-              : `Locked until all three skills reach 0.70. ${skills.filter(s => (data.mastery[s] ?? 0) >= 0.7).length} of ${skills.length} there.`}
-          </p>
-        </Window>
+        <div className="progress__side">
+          {data.posture && (
+            <Window title="Aurora's posture" tone={data.posture.score < 50 ? "breach" : "default"}>
+              <div className="posture">
+                <PostureGauge score={data.posture.score} label={data.posture.label} />
+                <p className="posture__summary">
+                  {data.posture.closed} of {data.posture.total} holes closed
+                  {data.posture.capstoneHeld ? ", and the chain is broken." : "."}
+                </p>
+                {data.posture.incidents?.length > 0 && (
+                  <div className="incidents">
+                    <span className="label">recent incidents</span>
+                    <ul>
+                      {data.posture.incidents.map((inc, i) => (
+                        <li key={i}>
+                          <Icon name="fracture" size={12} />
+                          <span>
+                            {data.titles?.[inc.challengeId]?.title ?? inc.challengeId}
+                            <span className="incidents__note"> — a patch shipped that left it open</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="incidents__fade">Incidents fade as you keep closing holes.</p>
+                  </div>
+                )}
+              </div>
+            </Window>
+          )}
+
+          <Window title="The Aurora Breach" tone={data.capstoneUnlocked ? "breach" : "quiet"}>
+            <p className="capstone__brief">
+              A single incident chaining all three vulnerabilities. It tests whether what
+              you've learned carries across, rather than one technique at a time.
+            </p>
+            <p className={data.capstoneUnlocked ? "capstone__gate capstone__gate--open" : "capstone__gate"}>
+              <Icon name={data.capstoneUnlocked ? "fracture" : "lock"} size={14} />{" "}
+              {data.capstoneUnlocked
+                ? "Unlocked — every domain is holding up."
+                : `Locked until all three skills reach 0.70. ${skills.filter(s => (data.mastery[s] ?? 0) >= 0.7).length} of ${skills.length} there.`}
+            </p>
+          </Window>
+        </div>
       </div>
 
       <Window
@@ -180,7 +212,9 @@ function MasteryRow({ icon, name, value, cleared, nodes }) {
 
       <p className="stat__why">
         {cleared === 0
-          ? "Nothing solved unaided yet, so this is the starting estimate."
+          // Not "the starting estimate": a wrong first attempt moves it too, and
+          // can raise it -- trying is itself evidence of learning under BKT.
+          ? "Nothing solved unaided yet. Your first try at each item, right or wrong, is what moves this."
           : `${cleared} solved unaided. Hints and retries still earn XP, but only a first attempt on your own moves this.`}
         {nextGate !== undefined && ` Next unlock at ${nextGate.toFixed(2)}.`}
       </p>

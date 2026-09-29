@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Window } from "./components/Window.jsx";
+import { BreachDiagram } from "./components/BreachDiagram.jsx";
+import { Icon } from "./components/Icon.jsx";
 import { api } from "./api.js";
 import "./AuthScreen.css";
 
 /**
- * Sign in or enrol.
+ * The title screen: sign in or enrol.
  *
  * Asks for a handle rather than an email, and says why. Participants are told
  * their identity is held separately from anything they do on the platform, so the
@@ -42,6 +44,29 @@ export function AuthScreen({ onAuthenticated }) {
   }
 
   return (
+    <div className="title">
+      {/* The first screen anyone sees, so it establishes the world before asking
+          for anything. The art is the same breach diagram the capstone uses,
+          fully compromised and live -- the thing the learner will spend the
+          session taking back. */}
+      <section className="title__hero" aria-labelledby="title-name">
+        <h1 id="title-name" className="title__name pixel">
+          CyberShield <span>Academy</span>
+        </h1>
+        <p className="title__tag">
+          It is three in the morning and Aurora Store is under attack. The night shift is you.
+        </p>
+        <div className="title__art" aria-hidden="true">
+          <BreachDiagram compromised={["browser", "database", "session"]} secured={[]} attacking />
+        </div>
+        <ul className="title__skills">
+          <li><Icon name="database" size={16} /> Stop injected queries</li>
+          <li><Icon name="browser" size={16} /> Stop injected scripts</li>
+          <li><Icon name="forgery" size={16} /> Stop forged requests</li>
+        </ul>
+        <p className="title__rule">Close every hole. Break nothing a real customer relies on.</p>
+      </section>
+
     <div className="auth">
       <Window title={registering ? "New recruit" : "Sign in"}>
         <form className="auth__form" onSubmit={submit}>
@@ -117,6 +142,7 @@ export function AuthScreen({ onAuthenticated }) {
         Your handle is the only thing we store about you. Everything you do on the
         platform is recorded against a random identifier that is not derived from it.
       </p>
+    </div>
     </div>
   );
 }

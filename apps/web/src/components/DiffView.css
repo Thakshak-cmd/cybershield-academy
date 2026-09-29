@@ -1,0 +1,25 @@
+.diff {
+  margin: 0;
+  padding: 10px 0;
+  font-family: var(--f-code);
+  font-size: 12.5px;
+  line-height: 1.7;
+  background: var(--code-bg);
+  color: var(--ink-2);
+  overflow-x: auto;
+}
+.diff__line { display: flex; }
+.diff__mark { flex: 0 0 28px; text-align: center; color: var(--muted); user-select: none; }
+.diff__text { white-space: pre; padding-right: 14px; }
+
+.diff__line--add { background: var(--secure-soft); }
+.diff__line--add .diff__mark, .diff__line--add .diff__text { color: var(--secure); }
+
+.diff__line--del { background: var(--breach-soft); }
+.diff__line--del .diff__mark { color: var(--breach); }
+.diff__line--del .diff__text { color: var(--breach); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}

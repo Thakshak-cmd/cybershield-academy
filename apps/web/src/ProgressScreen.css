@@ -13,6 +13,19 @@
 
 .progress__top { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 900px) { .progress__top { grid-template-columns: 1fr; } }
+.progress__side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* ---------- posture ---------- */
+
+.posture { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.posture__summary { margin: 0; font-size: 13px; color: var(--ink-2); text-align: center; }
+
+.incidents { align-self: stretch; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.incidents ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.incidents li { display: flex; gap: 7px; align-items: flex-start; font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
+.incidents li .icon { color: var(--breach); margin-top: 2px; }
+.incidents__note { color: var(--muted); }
+.incidents__fade { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
 
 /* ---------- character sheet ---------- */
 

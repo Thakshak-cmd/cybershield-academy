@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Window, Pips } from "./components/Window.jsx";
 import { Reward } from "./components/Reward.jsx";
 import { Portrait } from "./components/Portrait.jsx";
+import { DiffView } from "./components/DiffView.jsx";
+import { PostureGauge } from "./components/PostureGauge.jsx";
+import { play } from "./sound.js";
 import { api } from "./api.js";
 import "./ChallengeScreen.css";
 
@@ -25,26 +28,35 @@ export function ChallengeScreen() {
   const [picked, setPicked] = useState(/** @type {number[]} */ ([]));
   const [verdict, setVerdict] = useState(/** @type {Verdict|null} */ (null));
   const [busy, setBusy] = useState(false);
-  const [hintsShown, setHintsShown] = useState(0);
+  const [hints, setHints] = useState(/** @type {string[]} */ ([]));
+  const [decision, setDecision] = useState(/** @type {"approve"|"reject"|null} */ (null));
+  const [rejectReason, setRejectReason] = useState(/** @type {string|null} */ (null));
   const [error, setError] = useState(/** @type {string|null} */ (null));
   const openedAt = useRef(Date.now());
 
+  /** Fetch whatever the adaptive layer serves next and reset the screen for it. */
+  async function load(isCancelled = () => false) {
+    const next = await api.next();
+    if (isCancelled() || !next.challenge) return;
+    const started = await api.start(next.challenge.id);
+    if (isCancelled()) return;
+    setChallenge(next.challenge);
+    setReason(next.reason);
+    setMastery(next.mastery || {});
+    setPatch(next.challenge.vulnerable);
+    setHints(started.hints ?? []);
+    openedAt.current = Date.now();
+  }
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const next = await api.next();
-      if (cancelled || !next.challenge) return;
-      await api.start(next.challenge.id);
-      setChallenge(next.challenge);
-      setReason(next.reason);
-      setMastery(next.mastery || {});
-      setPatch(next.challenge.vulnerable);
-      openedAt.current = Date.now();
-    })();
+    load(() => cancelled);
     return () => { cancelled = true; };
   }, []);
 
   const isSpot = challenge?.format === "spot";
+  const isReview = challenge?.format === "review";
+  const isHarden = challenge?.format === "harden";
 
   async function deploy() {
     if (!challenge || busy) return;
@@ -52,12 +64,25 @@ export function ChallengeScreen() {
       setError("Choose a line first.");
       return;
     }
+    if (isReview && !decision) {
+      setError("Approve the change, or request changes.");
+      return;
+    }
+    if (isReview && decision === "reject" && !rejectReason) {
+      setError("Say what is wrong with it.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const result = await api.attempt(
-        challenge.id, isSpot ? picked : patch, Date.now() - openedAt.current);
+      const submission = isSpot ? picked
+        : isReview && decision
+          ? { decision, reason: decision === "reject" ? (rejectReason ?? undefined) : undefined }
+          : patch;
+      const result = await api.attempt(challenge.id, submission, Date.now() - openedAt.current);
       setVerdict(result);
+      play(result.passed ? (result.newBadges?.length ? "badge" : "solve") : "fail",
+           { pinnedOff: api.isStudyParticipant() });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -68,22 +93,24 @@ export function ChallengeScreen() {
   /** Reset for whatever the adaptive layer serves next, without a page reload. */
   async function nextAssignment() {
     setVerdict(null);
-    setHintsShown(0);
     setPicked([]);
+    setDecision(null);
+    setRejectReason(null);
     setChallenge(null);
-    const next = await api.next();
-    if (!next.challenge) return;
-    await api.start(next.challenge.id);
-    setChallenge(next.challenge);
-    setReason(next.reason);
-    setMastery(next.mastery || {});
-    setPatch(next.challenge.vulnerable);
-    openedAt.current = Date.now();
+    await load();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function takeHint() {
-    if (hintsShown < (challenge?.hintCount ?? 0)) setHintsShown(h => h + 1);
+  /** Hints come from the server, which records that one was taken. */
+  async function takeHint() {
+    if (!challenge || hints.length >= (challenge.hintCount ?? 0)) return;
+    try {
+      const r = await api.takeHint(challenge.id, hints.length);
+      setHints(r.hints);
+      play("hint", { pinnedOff: api.isStudyParticipant() });
+    } catch (err) {
+      setError(err.message);
+    }
   }
 
   if (!challenge) {
@@ -131,19 +158,59 @@ export function ChallengeScreen() {
                 }}
               />
             </Window>
+          ) : isReview ? (
+            <>
+              <Window
+                title={`Pull request from ${(challenge.prAuthor ?? "a teammate").replace(/\s*\(.*\)/, "")}`}
+                badge={<span className="label">{challenge.file}</span>}
+                flush
+              >
+                <DiffView before={challenge.vulnerable} after={challenge.proposed ?? ""} />
+              </Window>
+
+              <Window title="Your review">
+                <fieldset className="review">
+                  <legend className="visually-hidden">Your decision</legend>
+                  <label className={decision === "approve" ? "review__choice review__choice--on" : "review__choice"}>
+                    <input type="radio" name="decision" checked={decision === "approve"}
+                           onChange={() => { setDecision("approve"); setVerdict(null); setError(null); }} />
+                    <span className="pixel">Approve and merge</span>
+                  </label>
+                  <label className={decision === "reject" ? "review__choice review__choice--on" : "review__choice"}>
+                    <input type="radio" name="decision" checked={decision === "reject"}
+                           onChange={() => { setDecision("reject"); setVerdict(null); setError(null); }} />
+                    <span className="pixel">Request changes</span>
+                  </label>
+                </fieldset>
+
+                {decision === "reject" && (
+                  <fieldset className="review__reasons">
+                    <legend className="label">What is wrong with it?</legend>
+                    {(challenge.reasons ?? []).map(r => (
+                      <label key={r.id} className={rejectReason === r.id ? "reason reason--on" : "reason"}>
+                        <input type="radio" name="reason" checked={rejectReason === r.id}
+                               onChange={() => { setRejectReason(r.id); setVerdict(null); setError(null); }} />
+                        <span>{r.text}</span>
+                      </label>
+                    ))}
+                  </fieldset>
+                )}
+              </Window>
+            </>
           ) : (
             <>
-              <Window title="The code as it stands" tone="quiet" flush>
+              <Window title={isHarden ? "The configuration as it stands" : "The code as it stands"} tone="quiet" flush>
                 <CodeBlock source={challenge.vulnerable} />
               </Window>
 
-              <Window title="Your patch" badge={<span className="label">editable</span>} flush>
+              <Window title={isHarden ? "Your configuration" : "Your patch"}
+                      badge={<span className="label">editable</span>} flush>
                 <textarea
                   className="editor"
                   value={patch}
                   spellCheck="false"
                   onChange={e => { setPatch(e.target.value); setVerdict(null); }}
-                  aria-label="Your patch"
+                  aria-label={isHarden ? "Your configuration" : "Your patch"}
                 />
               </Window>
             </>
@@ -189,16 +256,21 @@ export function ChallengeScreen() {
               <li>
                 <button className="cmd cmd--primary pixel" onClick={deploy} disabled={busy}>
                   <span className="cmd__caret">▸</span>
-                  {busy ? "Checking…" : isSpot ? "That's the one" : "Deploy patch"}
+                  {busy ? "Checking…"
+                    : isSpot ? "That's the one"
+                    : isReview ? "Submit review"
+                    : isHarden ? "Apply configuration"
+                    : "Deploy patch"}
                 </button>
               </li>
               <li>
                 <button className="cmd pixel" onClick={takeHint}
-                        disabled={hintsShown >= challenge.hintCount}>
+                        disabled={hints.length >= challenge.hintCount}
+                        title="A hint costs XP, and a hinted solve does not count towards mastery">
                   <span className="cmd__caret">▸</span>
                   Ask for a hint
                   <span className="cmd__note label">
-                    {challenge.hintCount - hintsShown} left
+                    {challenge.hintCount - hints.length} left
                   </span>
                 </button>
               </li>
@@ -209,12 +281,15 @@ export function ChallengeScreen() {
           <Window title="Field notes" tone="quiet">
             <p className="label reason">{reason}</p>
             <MasteryBar skill={challenge.skill} value={mastery[challenge.skill] ?? 0.15} />
-            {hintsShown > 0 && (
-              <ol className="hints">
-                {Array.from({ length: hintsShown }, (_, i) => (
-                  <li key={i}>{api.hint(i)}</li>
-                ))}
-              </ol>
+            {hints.length > 0 && (
+              <>
+                <ol className="hints">
+                  {hints.map((h, i) => <li key={i}>{h}</li>)}
+                </ol>
+                <p className="hints__cost label">
+                  hinted solves earn less xp and do not move mastery
+                </p>
+              </>
             )}
           </Window>
         </aside>
@@ -224,12 +299,12 @@ export function ChallengeScreen() {
         <Reward
           xp={verdict.xpAwarded ?? 0}
           badges={verdict.newBadges ?? []}
-          firstAttempt={verdict.attemptNo === 1 && hintsShown === 0}
+          firstAttempt={verdict.attemptNo === 1 && hints.length === 0}
           streak={verdict.streak ?? 0}
           onDone={nextAssignment}
         />
       ) : verdict ? (
-        <Verdict verdict={verdict} />
+        <Verdict verdict={verdict} format={challenge.format ?? "patch"} />
       ) : null}
     </div>
   );
@@ -302,20 +377,41 @@ function MasteryBar({ skill, value }) {
   );
 }
 
-/** @param {{ verdict: Verdict }} props */
-function Verdict({ verdict }) {
-  const won = verdict.passed;
+/** What a failed attempt means, in the terms of the thing that was attempted. */
+const FAILURE_COPY = {
+  patch: ["Still exploitable",
+    "The patch has not closed the hole, or it has closed it by breaking something a real customer relies on. The failures above say which."],
+  harden: ["Still exposed",
+    "The configuration still leaves a way in, or it closes one by breaking something the shop needs. The failures above say which."],
+  spot: ["Not that line",
+    "Read each wrong choice's note above -- it says why that line is sound. The flaw is where input stops being data."],
+  review: ["Review not accepted",
+    "Either the change is not what it seems, or the objection is not what is actually wrong with it. The notes above say which."]
+};
+
+/** @param {{ verdict: Verdict, format: string }} props */
+function Verdict({ verdict, format }) {
+  const [title, body] = FAILURE_COPY[format] ?? FAILURE_COPY.patch;
+  const posture = verdict.posture;
   return (
-    <Window
-      tone={won ? "secure" : "breach"}
-      title={won ? "Hole closed" : "Still exploitable"}
-      badge={won && <span className="label">+{verdict.xpAwarded} xp</span>}
-    >
-      <p className="verdict">
-        {won
-          ? "The input never becomes part of the query text, so there is nothing to escape and no payload shape to anticipate. Every legitimate search still works, apostrophes included."
-          : "The patch has not closed the hole, or it has closed it by breaking something a real customer relies on. The failures above say which."}
-      </p>
+    <Window tone="breach" title={title}>
+      <div className="verdict__row">
+        <p className="verdict">{body}</p>
+        {/* The consequence: the company reacts to what shipped. Spot items never
+            move it -- pointing at the wrong line leaves nothing open. */}
+        {posture?.incident && (
+          <div className="consequence">
+            <PostureGauge score={posture.score} label={posture.label} size={120} />
+            <p className="consequence__text">
+              {posture.delta < 0
+                ? `Aurora's posture fell by ${-posture.delta}. `
+                : "Logged as an incident. "}
+              The attacker still has a way in.
+              <span className="consequence__hint"> It recovers as you close holes.</span>
+            </p>
+          </div>
+        )}
+      </div>
     </Window>
   );
 }

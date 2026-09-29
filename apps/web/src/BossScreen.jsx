@@ -3,6 +3,8 @@ import { Window, Pips } from "./components/Window.jsx";
 import { BreachDiagram } from "./components/BreachDiagram.jsx";
 import { Icon } from "./components/Icon.jsx";
 import { SKILL_ICONS } from "./components/icons.js";
+import { Reward } from "./components/Reward.jsx";
+import { play } from "./sound.js";
 import { api } from "./api.js";
 import "./BossScreen.css";
 
@@ -42,7 +44,10 @@ export function BossScreen({ bossId = "sec-900", onLeave }) {
     setBusy(true);
     setError(null);
     try {
-      setResult(await api.bossAttempt(boss.id, sources, Date.now() - openedAt.current));
+      const outcome = await api.bossAttempt(boss.id, sources, Date.now() - openedAt.current);
+      setResult(outcome);
+      play(outcome.passed ? (outcome.newBadges?.length ? "badge" : "solve") : "fail",
+           { pinnedOff: api.isStudyParticipant() });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -50,7 +55,24 @@ export function BossScreen({ bossId = "sec-900", onLeave }) {
     }
   }
 
-  if (error && !boss) return <p className="boss__error">{error}</p>;
+  // Locked (or unreachable) before it opened: say so, and give a way back rather
+  // than stranding the learner on a line of red text.
+  if (error && !boss) {
+    return (
+      <div className="boss boss--locked">
+        <Window title="The Aurora Breach" tone="quiet">
+          <div className="boss__lockedart" aria-hidden="true">
+            <BreachDiagram compromised={["browser", "database", "session"]} secured={[]} />
+          </div>
+          <p className="boss__note">{error}</p>
+          <button className="cmd pixel" onClick={onLeave}>
+            <span className="cmd__caret">▸</span>
+            Back to the character sheet
+          </button>
+        </Window>
+      </div>
+    );
+  }
   if (!boss) return <div className="boss__loading label">Reading the incident report…</div>;
 
   const stageResult = id => result?.stages?.find(s => s.stageId === id);
@@ -170,6 +192,19 @@ export function BossScreen({ bossId = "sec-900", onLeave }) {
           </p>
         )}
       </Window>
+
+      {/* Only when something was actually earned: holding it a second time pays
+          nothing, and a reward panel for nothing would be a lie. */}
+      {result?.passed && (result.xpAwarded > 0 || result.newBadges?.length > 0) && (
+        <Reward
+          xp={result.xpAwarded ?? 0}
+          badges={result.newBadges ?? []}
+          firstAttempt={result.attemptNo === 1}
+          title="Aurora held"
+          doneLabel="Back to the character sheet"
+          onDone={onLeave}
+        />
+      )}
     </div>
   );
 }

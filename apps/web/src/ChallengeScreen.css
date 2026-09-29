@@ -155,3 +155,52 @@
 .hints li { font-size: 13px; color: var(--ink-2); line-height: 1.55; }
 
 .verdict { margin: 0; color: var(--ink-2); max-width: 74ch; }
+
+/* ---------- review the fix ---------- */
+
+.review { border: 0; margin: 0; padding: 0; display: flex; gap: 10px; flex-wrap: wrap; }
+
+.review__choice {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--window-inner);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ink);
+}
+.review__choice--on { border-color: var(--window-edge); background: var(--accent-soft); color: var(--window-title); }
+.review__choice input, .reason input { accent-color: var(--accent); margin: 0; }
+
+.review__reasons {
+  border: 0; margin: 16px 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.review__reasons legend { margin-bottom: 8px; }
+
+.reason {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.reason input { margin-top: 3px; }
+.reason--on { border-color: var(--window-edge); background: var(--accent-soft); color: var(--ink); }
+
+.hints__cost { margin: 10px 0 0; color: var(--accent); }
+
+/* ---------- consequence ---------- */
+
+.verdict__row { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+.verdict__row .verdict { flex: 1 1 320px; }
+
+.consequence { display: flex; align-items: center; gap: 14px; flex: 0 1 360px; }
+.consequence__text { margin: 0; font-size: 13px; color: var(--breach); line-height: 1.55; }
+.consequence__hint { display: block; color: var(--muted); margin-top: 2px; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}

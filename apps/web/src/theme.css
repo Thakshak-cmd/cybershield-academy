@@ -138,6 +138,18 @@ body {
 }
 
 button { font-family: inherit; }
+
+/*
+  No ligatures in code. JetBrains Mono draws !== as a single glyph and => as an
+  arrow, which is lovely in an editor you already know and actively misleading in
+  one you are learning from: the difference between != and !== is exactly the kind
+  of thing this platform asks people to notice, and a learner should see the
+  characters they would have to type.
+*/
+code, pre, textarea, .code, .diff, .editor, .rule__id {
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {

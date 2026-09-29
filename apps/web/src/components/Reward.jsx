@@ -15,9 +15,11 @@ import "./Reward.css";
  * one thing a static number cannot: making the size of the reward felt rather
  * than read.
  *
- * @param {{ xp: number, badges: string[], firstAttempt: boolean, streak?: number, onDone?: () => void }} props
+ * @param {{ xp: number, badges: string[], firstAttempt: boolean, streak?: number, onDone?: () => void,
+ *           title?: string, doneLabel?: string }} props
  */
-export function Reward({ xp, badges = [], firstAttempt, streak = 0, onDone }) {
+export function Reward({ xp, badges = [], firstAttempt, streak = 0, onDone,
+                        title = "Hole closed", doneLabel = "Next assignment" }) {
   const shown = useCountUp(xp, 900);
 
   return (
@@ -25,7 +27,7 @@ export function Reward({ xp, badges = [], firstAttempt, streak = 0, onDone }) {
       <div className="reward__burst" aria-hidden="true" />
 
       <div className="reward__head">
-        <span className="reward__title pixel">Hole closed</span>
+        <span className="reward__title pixel">{title}</span>
         {firstAttempt && <span className="reward__flag label">first attempt, unaided</span>}
         {streak >= 2 && (
           <span className="reward__flag reward__flag--streak label">{streak} in a row</span>
@@ -57,7 +59,7 @@ export function Reward({ xp, badges = [], firstAttempt, streak = 0, onDone }) {
       {onDone && (
         <button className="cmd cmd--primary pixel reward__next" onClick={onDone}>
           <span className="cmd__caret">▸</span>
-          Next assignment
+          {doneLabel}
         </button>
       )}
     </div>

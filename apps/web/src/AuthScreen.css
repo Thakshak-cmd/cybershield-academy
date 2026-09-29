@@ -68,3 +68,50 @@
   color: var(--muted);
   line-height: 1.6;
 }
+
+/* ---------- title screen ---------- */
+
+.title {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 48px 20px 64px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 400px);
+  gap: 40px;
+  align-items: center;
+}
+.title .auth { padding: 0; margin: 0; max-width: none; }
+
+@media (max-width: 880px) {
+  .title { grid-template-columns: 1fr; gap: 28px; padding-top: 28px; }
+  .title .auth { max-width: 440px; width: 100%; margin: 0 auto; }
+}
+
+.title__hero { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.title__name {
+  margin: 0;
+  font-size: clamp(30px, 5.2vw, 52px);
+  line-height: 1.05;
+  letter-spacing: .02em;
+  color: var(--window-title);
+  text-shadow: 3px 3px 0 var(--window-edge);
+}
+.title__name span { display: block; color: var(--accent); }
+
+.title__tag { margin: 0; font-size: 16px; color: var(--ink-2); max-width: 46ch; line-height: 1.55; }
+
+.title__art {
+  border: 2px solid var(--window-edge);
+  background: var(--surface);
+  padding: 10px;
+}
+
+.title__skills {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 8px 18px;
+}
+.title__skills li { display: flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--ink-2); }
+.title__skills .icon { color: var(--accent); }
+
+.title__rule { margin: 0; font-size: 13px; color: var(--muted); }

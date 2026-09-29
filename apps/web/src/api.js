@@ -28,6 +28,9 @@
  * @property {number} functionalCount
  * @property {number} hintCount
  * @property {number} [flawedCount]  spot items only: how many lines to pick
+ * @property {string} [proposed]     review items only: the teammate's patch
+ * @property {string} [prAuthor]     review items only
+ * @property {{ id: string, text: string }[]} [reasons]  review items only
  */
 
 /**
@@ -56,6 +59,17 @@
  * @property {boolean} [countedForMastery]
  * @property {string[]} [newBadges]  ids earned by this attempt, in award order
  * @property {number} [streak]        consecutive unaided first-attempt solves, after this one
+ * @property {Posture & { delta: number, incident: boolean }} [posture]  Aurora's posture after this attempt
+ */
+
+/**
+ * @typedef {object} Posture
+ * @property {number} score
+ * @property {string} label
+ * @property {number} closed
+ * @property {number} total
+ * @property {boolean} capstoneHeld
+ * @property {{ challengeId: string, occurredAt: string }[]} incidents
  */
 
 const TOKEN_KEY = "cybershield.token";
@@ -224,14 +238,30 @@ export const api = {
     return call("/api/next");
   },
 
+  /** @returns {Promise<{ challenge: Challenge, hints: string[] }>} */
   async start(challengeId) {
-    if (!(await this.connect())) return { challenge: FIXTURE_CHALLENGE };
+    if (!(await this.connect())) return { challenge: FIXTURE_CHALLENGE, hints: [] };
     return call(`/api/challenges/${challengeId}/start`, { method: "POST" });
   },
 
   /**
+   * Ask the server for the next hint. The server records it, which is what lets
+   * an attempt know it was assisted -- see POST /api/challenges/:id/hint.
+   *
+   * @returns {Promise<{ hints: string[], remaining: number }>}
+   */
+  async takeHint(challengeId, already = 0) {
+    if (!(await this.connect())) {
+      const hints = FIXTURE_HINTS.slice(0, already + 1);
+      return { hints, remaining: FIXTURE_HINTS.length - hints.length };
+    }
+    return call(`/api/challenges/${challengeId}/hint`, { method: "POST" });
+  },
+
+  /**
    * @param {string} challengeId
-   * @param {string | number[]} submission  a patch, or the lines chosen for a spot item
+   * @param {string | number[] | { decision: string, reason?: string }} submission
+   *   a patch, the lines chosen for a spot item, or a review decision
    * @param {number} durationMs
    */
   async attempt(challengeId, submission, durationMs) {
@@ -243,7 +273,9 @@ export const api = {
     }
     const body = Array.isArray(submission)
       ? { lines: submission, durationMs }
-      : { source: submission, durationMs };
+      : typeof submission === "object"
+        ? { ...submission, durationMs }
+        : { source: submission, durationMs };
     return call(`/api/challenges/${challengeId}/attempt`, {
       method: "POST",
       body: JSON.stringify(body)
@@ -287,9 +319,7 @@ export const api = {
     });
   },
 
-  hint(index) {
-    return FIXTURE_HINTS[index] ?? null;
-  },
+
 
   /* ---------------------------------------------------------------- auth */
 
