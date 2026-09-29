@@ -168,3 +168,32 @@ describe("spot-the-flaw attempts", () => {
     assert.ok(!("lines" in r.events[0].payload));
   });
 });
+
+
+describe("review attempts", () => {
+  const review = {
+    id: "review-t", skill: "csrf", format: "review", validator: "review",
+    sound: false, correctReason: "missing",
+    reasonExplanations: { timing: "irrelevant here" },
+    xp: { firstAttempt: 90, withHints: 45, retry: 30 }
+  };
+
+  test("the right rejection is a solve and a BKT observation", () => {
+    const r = resolveAttempt(/** @type {any} */ (review), { decision: "reject", reason: "missing" }, ctx());
+    assert.equal(r.verdict.passed, true);
+    assert.equal(r.xpAwarded, 90);
+    assert.deepEqual(r.bktObservation, { skill: "csrf", correct: true });
+  });
+
+  test("approving an unsafe fix fails the security suite", () => {
+    const r = resolveAttempt(/** @type {any} */ (review), { decision: "approve" }, ctx());
+    assert.ok(r.verdict.failedRules.includes("review.no-unsafe-merge"));
+  });
+
+  test("the wrong reason explains itself", () => {
+    const r = resolveAttempt(/** @type {any} */ (review), { decision: "reject", reason: "timing" }, ctx());
+    assert.equal(r.verdict.passed, false);
+    const why = r.verdict.functional.results.find(x => x.id === "review.names-the-flaw")?.evidence;
+    assert.equal(why, "irrelevant here");
+  });
+});

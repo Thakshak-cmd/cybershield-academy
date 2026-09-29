@@ -245,3 +245,39 @@ describe("a full attempt, persisted", () => {
     assert.ok(!raw.includes(marker), "learner code must never reach the database");
   });
 });
+
+describe("the capstone, persisted", () => {
+  // It used to have its own route that wrote only the attempt: beating it earned
+  // nothing, its badge could never be awarded, and every try claimed to be first.
+  test("beating it completes it, pays XP and awards Aurora Held", async () => {
+    const { seed } = await import("../src/seed.js");
+    const { recordAttempt } = await import("../src/record-attempt.js");
+    const { BOSS_REFERENCE_PATCHES } = await import("../../../content/reference-patches.js");
+    await seed();
+
+    const boss = await models.Challenge.findOne({ id: "sec-900" }).lean();
+    const [winning, partial] = BOSS_REFERENCE_PATCHES["sec-900"];
+    const auth = { subjectId: "subj_boss", sessionId: "sess_1", isStudyParticipant: true };
+
+    const miss = await recordAttempt({ auth, challenge: boss, submission: partial.sources });
+    assert.equal(miss.body.passed, false);
+    assert.equal(miss.body.attemptNo, 1);
+    assert.deepEqual(miss.body.posture.incidents.map(i => i.challengeId), ["sec-900"],
+      "a failed capstone attempt is an incident");
+    assert.equal(miss.body.posture.incident, true);
+
+    const win = await recordAttempt({ auth, challenge: boss, submission: winning.sources });
+    assert.equal(win.body.passed, true);
+    assert.equal(win.body.attemptNo, 2);
+    assert.equal(win.body.xpAwarded, boss.xp.retry);
+    assert.ok(win.body.newBadges.includes("aurora-held"));
+    assert.equal(win.body.posture.capstoneHeld, true);
+
+    const progress = await models.Progress.findOne({ subjectId: "subj_boss" }).lean();
+    assert.deepEqual(progress.solvedChallenges, ["sec-900"]);
+    assert.equal(progress.xp, boss.xp.retry);
+
+    const attempts = await models.Event.find({ subjectId: "subj_boss", type: "challenge.attempted" }).lean();
+    assert.ok(attempts.every(e => e.payload.countsForBkt === false));
+  });
+});

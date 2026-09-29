@@ -85,7 +85,9 @@ before(async () => {
     }),
     loadProgress: async () => ({ xp: 120, badges: [] }),
     loadTitles: async () => ({ "sec-101": { title: "The product search box", tier: "beginner" } }),
-    loadEvents: async () => []
+    loadEvents: async () => [],
+    countHints: async () => 0,
+    countAttempts: async () => 0
   }));
   app.use((err, _req, res, _next) => res.status(500).json({ error: err.message }));
 
@@ -182,7 +184,8 @@ describe("spot items over the wire", () => {
       mlClient: fakeMl,
       append: async (_s, ev) => ev.map((e, i) => ({ ...e, seq: i + 1 })),
       findChallenge: async () => spot,
-      loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] })
+      loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] }),
+      countHints: async () => 0
     }));
     const srv = app.listen(0);
     await new Promise(r => srv.once("listening", r));
@@ -196,6 +199,40 @@ describe("spot items over the wire", () => {
     assert.ok(!blob.includes("flawedLines"));
     assert.ok(!blob.includes("decoyLines"));
     assert.ok(!blob.includes("reads only"));
+  });
+});
+
+describe("review items over the wire", () => {
+  test("ship the proposal and the reasons, never the answer", async () => {
+    const review = {
+      id: "review-x", title: "Review", skill: "csrf", tier: "beginner", format: "review",
+      vulnerable: "a", proposed: "b", prAuthor: "Marcus",
+      sound: false, correctReason: "missing",
+      reasons: [{ id: "missing", text: "Skips the check" }, { id: "timing", text: "Timing" }],
+      reasonExplanations: { timing: "SECRET_EXPLANATION" },
+      hints: [], attackSuite: [], functionalSuite: []
+    };
+    const app = express();
+    app.use((req, _res, nxt) => { req.auth = { subjectId: "s", sessionId: "x", isStudyParticipant: false }; nxt(); });
+    app.use("/api", createNextRouter({
+      mlClient: fakeMl,
+      append: async (_s, ev) => ev.map((e, i) => ({ ...e, seq: i + 1 })),
+      findChallenge: async () => review,
+      loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] }),
+      countHints: async () => 0
+    }));
+    const srv = app.listen(0);
+    await new Promise(r => srv.once("listening", r));
+    const port = /** @type {import("node:net").AddressInfo} */ (srv.address()).port;
+    const body = await (await fetch(`http://localhost:${port}/api/challenges/review-x/start`, { method: "POST" })).json();
+    srv.close();
+
+    assert.equal(body.challenge.proposed, "b");
+    assert.deepEqual(body.challenge.reasons, [{ id: "missing", text: "Skips the check" }, { id: "timing", text: "Timing" }]);
+    const blob = JSON.stringify(body);
+    for (const leak of ["sound", "correctReason", "reasonExplanations", "SECRET_EXPLANATION"]) {
+      assert.ok(!blob.includes(leak), `${leak} reached the client`);
+    }
   });
 });
 
@@ -233,6 +270,9 @@ describe("GET /api/progress", () => {
     assert.ok(Array.isArray(body.nodes));
     assert.ok(Array.isArray(body.cleared));
     assert.equal(body.degraded, false);
+    // Derived from the (empty) log, and only real holes count towards the total.
+    assert.equal(body.posture.score, 0);
+    assert.equal(body.posture.total, 1);
   });
 
   test("never ships challenge content with the tree", async () => {
@@ -323,5 +363,76 @@ describe("ml client", () => {
     assert.ok(rec, "a 200 response must produce a recommendation");
     assert.equal(rec.challengeId, "xss.a");
     assert.equal(rec.pMastery, 0.31);
+  });
+});
+
+describe("the capstone gate", () => {
+  const BOSS = { id: "sec-900", skill: "sqli", isBoss: true, stages: [{ id: "a", rules: [], vulnerable: "x" }] };
+
+  /** @param {boolean | "down"} open */
+  async function bossApp(open) {
+    const recorded = [];
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, nxt) => { req.auth = { subjectId: "s", sessionId: "x", isStudyParticipant: true }; nxt(); });
+    app.use("/api", createNextRouter({
+      mlClient: {
+        ...fakeMl,
+        async mastery() {
+          if (open === "down") throw new MlServiceError("ML service unreachable");
+          return { mastery: {}, unlocked: [], capstoneUnlocked: open };
+        }
+      },
+      findChallenge: async id => (id === BOSS.id ? BOSS : null),
+      loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] }),
+      // A stand-in for the real recording path; only the parts the route reads.
+      recordAttempt: /** @type {any} */ (async input => {
+        recorded.push(input);
+        return { outcome: { stages: { compromised: [], secured: ["database"], stages: [] } },
+                 body: { passed: true } };
+      })
+    }));
+    const srv = app.listen(0);
+    await new Promise(r => srv.once("listening", r));
+    const url = `http://localhost:${/** @type {import("node:net").AddressInfo} */ (srv.address()).port}/api/boss/sec-900`;
+    return { url, recorded, close: () => srv.close() };
+  }
+
+  const post = url => fetch(url + "/attempt", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sources: { a: "x" } })
+  });
+
+  test("a locked capstone cannot be opened or attempted, and nothing is recorded", async () => {
+    const { url, recorded, close } = await bossApp(false);
+    const opened = await fetch(url);
+    const tried = await post(url);
+    close();
+    assert.equal(opened.status, 403);
+    assert.equal((await opened.json()).locked, true);
+    assert.equal(tried.status, 403);
+    assert.equal(recorded.length, 0);
+  });
+
+  test("once earned it opens, and attempts go through the shared recording path", async () => {
+    const { url, recorded, close } = await bossApp(true);
+    const opened = await fetch(url);
+    const tried = await post(url);
+    const body = await tried.json();
+    close();
+    assert.equal(opened.status, 200);
+    assert.equal(tried.status, 200);
+    assert.equal(recorded.length, 1);
+    assert.deepEqual(body.secured, ["database"]);
+  });
+
+  test("without the model it fails closed", async () => {
+    const { url, recorded, close } = await bossApp("down");
+    const opened = await fetch(url);
+    const tried = await post(url);
+    close();
+    assert.equal(opened.status, 503);
+    assert.equal(tried.status, 503);
+    assert.equal(recorded.length, 0);
   });
 });

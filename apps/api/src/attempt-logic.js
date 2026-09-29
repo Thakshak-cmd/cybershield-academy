@@ -1,6 +1,6 @@
 // @ts-check
 import { createHash } from "node:crypto";
-import { validate, validateSpot } from "@cybershield/validator";
+import { validate, validateReview, validateSpot, validateStages } from "@cybershield/validator";
 import { SCHEMA_VERSION, countsForBkt } from "@cybershield/shared";
 
 export { SCHEMA_VERSION };
@@ -17,6 +17,7 @@ export { SCHEMA_VERSION };
  * @property {import("@cybershield/shared").SubSkill} [subSkill]
  * @property {import("@cybershield/shared").Validator} validator
  * @property {{ firstAttempt?: number, withHints?: number, retry?: number }} [xp]
+ * @property {Record<string, any>[]} [stages]
  */
 
 /**
@@ -80,7 +81,9 @@ export const isBktObservation = countsForBkt;
 
 /**
  * @param {ChallengeDef} challenge
- * @param {string | number[]} submission  a patch, or the lines chosen for a spot item
+ * @param {string | number[] | { decision: string, reason?: string } | Record<string, string>} submission
+ *   a patch, the lines chosen for a spot item, a review decision, or one patch
+ *   per capstone stage
  * @param {AttemptContext} context
  */
 export function resolveAttempt(challenge, submission, context) {
@@ -91,14 +94,27 @@ export function resolveAttempt(challenge, submission, context) {
     occurredAt = new Date()
   } = context;
 
-  // A spot item is answered with line numbers, everything else with a patch. Both
-  // produce the same verdict shape, so nothing downstream needs to know which.
+  // Four kinds of answer, one verdict shape, so nothing downstream -- XP, BKT,
+  // telemetry, the interface -- needs to know which kind of challenge this was.
   const isSpot = challenge.format === "spot";
-  const verdict = isSpot
-    ? validateSpot(/** @type {any} */ (challenge), /** @type {number[]} */ (submission))
-    : validate(challenge, /** @type {string} */ (submission));
-  const source = isSpot ? JSON.stringify(submission) : /** @type {string} */ (submission);
+  const isReview = challenge.format === "review";
+  const isBoss = Array.isArray(challenge.stages) && challenge.stages.length > 0;
+  const stages = isBoss
+    ? validateStages(/** @type {any} */ (challenge), /** @type {any} */ (submission))
+    : null;
+  const verdict = stages
+    ? combineStages(stages)
+    : isSpot
+      ? validateSpot(/** @type {any} */ (challenge), /** @type {number[]} */ (submission))
+      : isReview
+        ? validateReview(/** @type {any} */ (challenge), /** @type {any} */ (submission))
+        : validate(challenge, /** @type {string} */ (submission));
+  const source = typeof submission === "string" ? submission : JSON.stringify(submission);
   const attemptNo = priorAttempts + 1;
+  // The capstone mixes all three skills in one submission, so its outcome is not
+  // evidence about any one of them. Letting it into BKT would credit or blame a
+  // skill for a stage the learner may not even have attempted.
+  const bkt = !isBoss && isBktObservation({ attemptNo, hintsUsed });
   const passed = verdict.passed;
 
   // Re-solving something already cleared earns nothing. Without this, a learner can
@@ -128,7 +144,7 @@ export function resolveAttempt(challenge, submission, context) {
       failedRules: verdict.failedRules,
       submissionHash: fingerprint(source),
       durationMs,
-      countsForBkt: isBktObservation({ attemptNo, hintsUsed })
+      countsForBkt: bkt
     }
   }];
 
@@ -164,8 +180,34 @@ export function resolveAttempt(challenge, submission, context) {
     events,
     xpAwarded,
     newlySolved: passed && !alreadySolved,
-    bktObservation: isBktObservation({ attemptNo, hintsUsed })
-      ? { skill: challenge.skill, correct: passed }
-      : null
+    bktObservation: bkt ? { skill: challenge.skill, correct: passed } : null,
+    stages
+  };
+}
+
+/**
+ * One verdict for a multi-stage encounter, in the same shape as every other.
+ *
+ * Failed rules keep their stage as a prefix so the analysis can ask which
+ * technique a learner failed to transfer, not only whether the capstone fell.
+ *
+ * @param {ReturnType<typeof validateStages>} outcome
+ */
+export function combineStages(outcome) {
+  /** @param {"security"|"functional"} kind */
+  const suite = kind => ({
+    passed: outcome.stages.reduce((n, st) => n + st[kind].passed, 0),
+    total: outcome.stages.reduce((n, st) => n + st[kind].total, 0),
+    results: outcome.stages.flatMap(st => st[kind].results)
+  });
+  const broken = outcome.stages.find(st => st.parseError);
+  return {
+    passed: outcome.passed,
+    parseError: broken?.parseError
+      ? { ...broken.parseError, message: `${broken.stageId}: ${broken.parseError.message}` }
+      : null,
+    security: suite("security"),
+    functional: suite("functional"),
+    failedRules: outcome.stages.flatMap(st => st.failedRules.map(r => `${st.stageId}:${r}`))
   };
 }

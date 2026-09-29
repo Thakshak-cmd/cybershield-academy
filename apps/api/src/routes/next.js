@@ -1,9 +1,10 @@
 // @ts-check
 import { Router } from "express";
-import { SCHEMA_VERSION, deriveStreaks } from "@cybershield/shared";
+import { SCHEMA_VERSION, deriveStreaks, derivePosture } from "@cybershield/shared";
 import { Challenge, Progress } from "../models/index.js";
-import { append as defaultAppend, bktObservationsFor as defaultObservations, eventsFor as defaultEvents } from "../telemetry.js";
-import { validateStages } from "@cybershield/validator";
+import { append as defaultAppend, bktObservationsFor as defaultObservations, eventsFor as defaultEvents,
+         countHints as defaultCountHints, countAttempts as defaultCountAttempts } from "../telemetry.js";
+import { recordAttempt as defaultRecordAttempt, postureCatalogue } from "../record-attempt.js";
 import { BADGES } from "../../../../content/badges.js";
 import { createMlClient, MlServiceError } from "../ml-client.js";
 
@@ -27,7 +28,10 @@ const MAX_BOSS_BYTES = 80_000;
  *   loadState?: (subjectId: string) => Promise<import("../ml-client.js").LearnerState>,
  *   loadProgress?: (subjectId: string) => Promise<{ xp?: number, badges?: string[] }|null>,
  *   loadTitles?: (ids: string[]) => Promise<Record<string, { title: string, tier: string }>>,
- *   loadEvents?: (subjectId: string) => Promise<import("@cybershield/shared").TelemetryEvent[]>
+ *   loadEvents?: (subjectId: string) => Promise<import("@cybershield/shared").TelemetryEvent[]>,
+ *   countHints?: (subjectId: string, challengeId: string) => Promise<number>,
+ *   countAttempts?: (subjectId: string, challengeId: string) => Promise<number>,
+ *   recordAttempt?: typeof defaultRecordAttempt
  * }} [deps]
  */
 export function createNextRouter(deps = {}) {
@@ -40,6 +44,9 @@ export function createNextRouter(deps = {}) {
   const loadProgress = deps.loadProgress ?? defaultLoadProgress;
   const loadTitles = deps.loadTitles ?? defaultLoadTitles;
   const loadEvents = deps.loadEvents ?? defaultEvents;
+  const countHints = deps.countHints ?? defaultCountHints;
+  const countAttempts = deps.countAttempts ?? defaultCountAttempts;
+  const recordAttempt = deps.recordAttempt ?? defaultRecordAttempt;
 
   /**
    * GET /api/next
@@ -126,6 +133,8 @@ export function createNextRouter(deps = {}) {
       const challenge = await findChallenge(req.params.id);
       if (!challenge) return res.status(404).json({ error: "No such challenge." });
 
+      const revealed = await countHints(subjectId, challenge.id);
+
       await append(subjectId, [{
         schemaVersion: SCHEMA_VERSION,
         subjectId,
@@ -141,11 +150,84 @@ export function createNextRouter(deps = {}) {
         }
       }]);
 
-      res.json({ challenge: publicChallenge(challenge) });
+      res.json({
+        challenge: publicChallenge(challenge),
+        hints: (challenge.hints || []).slice(0, revealed)
+      });
     } catch (err) {
       next(err);
     }
   });
+
+  /**
+   * POST /api/challenges/:id/hint
+   *
+   * Reveal the next hint, and record that it was taken.
+   *
+   * Hints used to be shown by the browser from a fixture and never reported, so
+   * the server always believed none had been used. That was not cosmetic: a
+   * hint-assisted solve was recorded as unaided, so the knowledge-tracing model
+   * counted "I was told the answer" as evidence of mastery, XP paid the unaided
+   * rate, and the streak and "No Hints Needed" badge counted assisted solves.
+   * Hints are therefore issued here, one at a time, each leaving an event -- the
+   * log is the only place attempt-time decisions can read from.
+   */
+  router.post("/challenges/:id/hint", async (req, res, next) => {
+    try {
+      const { subjectId, sessionId, isStudyParticipant } = req.auth;
+      const challenge = await findChallenge(req.params.id);
+      if (!challenge) return res.status(404).json({ error: "No such challenge." });
+
+      const hints = challenge.hints || [];
+      const [taken, attempts] = await Promise.all([
+        countHints(subjectId, challenge.id),
+        countAttempts(subjectId, challenge.id)
+      ]);
+
+      if (taken >= hints.length) {
+        return res.json({ hints, remaining: 0 });
+      }
+
+      await append(subjectId, [{
+        schemaVersion: SCHEMA_VERSION,
+        subjectId,
+        sessionId,
+        occurredAt: new Date(),
+        isStudyParticipant,
+        type: "hint.requested",
+        payload: {
+          challengeId: challenge.id,
+          skill: challenge.skill,
+          hintLevel: taken + 1,
+          attemptNo: attempts + 1
+        }
+      }]);
+
+      res.json({ hints: hints.slice(0, taken + 1), remaining: hints.length - taken - 1 });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * Whether this learner has earned the capstone.
+   *
+   * Enforced here, not only drawn on the progress screen: the header links to the
+   * encounter from the start, and a participant who opened it in minute one would
+   * produce capstone data that measures nothing about transfer. Fails closed --
+   * without the model there is no evidence the gate was reached.
+   *
+   * @param {string} subjectId
+   */
+  async function capstoneOpen(subjectId) {
+    const { capstoneUnlocked } = await ml.mastery(await loadState(subjectId));
+    return capstoneUnlocked;
+  }
+
+  const LOCKED = {
+    error: "The Aurora Breach is still locked. Build up all three skills first -- your character sheet shows how close you are.",
+    locked: true
+  };
 
   /**
    * GET /api/boss/:id
@@ -157,8 +239,12 @@ export function createNextRouter(deps = {}) {
     try {
       const boss = await findChallenge(req.params.id);
       if (!boss || !boss.stages) return res.status(404).json({ error: "No such encounter." });
+      if (!(await capstoneOpen(req.auth.subjectId))) return res.status(403).json(LOCKED);
       res.json({ boss: publicBoss(boss) });
     } catch (err) {
+      if (err instanceof MlServiceError) {
+        return res.status(503).json({ error: "The adaptive layer is unavailable, so the capstone cannot be opened." });
+      }
       next(err);
     }
   });
@@ -173,7 +259,6 @@ export function createNextRouter(deps = {}) {
    */
   router.post("/boss/:id/attempt", async (req, res, next) => {
     try {
-      const { subjectId, sessionId, isStudyParticipant } = req.auth;
       const { sources, durationMs = 0 } = req.body ?? {};
 
       if (!sources || typeof sources !== "object") {
@@ -187,35 +272,20 @@ export function createNextRouter(deps = {}) {
 
       const boss = await findChallenge(req.params.id);
       if (!boss || !boss.stages) return res.status(404).json({ error: "No such encounter." });
+      if (!(await capstoneOpen(req.auth.subjectId))) return res.status(403).json(LOCKED);
 
-      const outcome = validateStages(/** @type {any} */ (boss), sources);
-
-      await append(subjectId, [{
-        schemaVersion: SCHEMA_VERSION,
-        subjectId, sessionId,
-        occurredAt: new Date(),
-        isStudyParticipant,
-        type: "challenge.attempted",
-        payload: {
-          challengeId: boss.id,
-          skill: boss.skill,
-          attemptNo: 1,
-          correct: outcome.passed,
-          validator: boss.validator,
-          // Per stage, so the analysis can ask which technique a learner failed
-          // to transfer rather than only whether the boss was beaten.
-          failedRules: outcome.stages.flatMap(st => st.failedRules.map(r => `${st.stageId}:${r}`)),
-          submissionHash: "",
-          durationMs,
-          countsForBkt: false
-        }
-      }]);
+      // Through the same path as every other attempt, so beating the capstone
+      // completes it, pays XP, and can award the badge that needs it.
+      const { outcome, body } = await recordAttempt({
+        auth: req.auth, challenge: boss, submission: sources, durationMs
+      });
+      const stages = /** @type {NonNullable<typeof outcome.stages>} */ (outcome.stages);
 
       res.json({
-        passed: outcome.passed,
-        compromised: outcome.compromised,
-        secured: outcome.secured,
-        stages: outcome.stages.map(st => ({
+        ...body,
+        compromised: stages.compromised,
+        secured: stages.secured,
+        stages: stages.stages.map(st => ({
           stageId: st.stageId,
           component: st.component,
           skill: st.skill,
@@ -227,6 +297,9 @@ export function createNextRouter(deps = {}) {
         }))
       });
     } catch (err) {
+      if (err instanceof MlServiceError) {
+        return res.status(503).json({ error: "The adaptive layer is unavailable, so the capstone cannot be scored." });
+      }
       next(err);
     }
   });
@@ -268,6 +341,11 @@ export function createNextRouter(deps = {}) {
 
       res.json({
         streaks: deriveStreaks(events),
+        // Derived from the log like the streaks: a projection of what the learner
+        // did, never a number stored alongside it that could drift.
+        posture: derivePosture(events, postureCatalogue(state.candidates.map(c => ({
+          id: c.challenge_id, isDrill: !!c.is_drill, isBoss: !!c.is_boss
+        })))),
         mastery,
         unlocked,
         capstoneUnlocked,
@@ -409,6 +487,14 @@ function publicChallenge(challenge) {
     // server-side too: shipping "why line 3 is wrong" gives the answer away by
     // elimination.
     flawedCount: challenge.format === "spot" ? (challenge.flawedLines || []).length : undefined,
+    // A review ships the proposal and the reasons to choose from -- never
+    // whether the proposal is sound, which reason is right, or why the others
+    // are wrong. Any of those is the answer.
+    proposed: challenge.format === "review" ? challenge.proposed : undefined,
+    prAuthor: challenge.format === "review" ? challenge.prAuthor : undefined,
+    reasons: challenge.format === "review"
+      ? (challenge.reasons || []).map(r => ({ id: r.id, text: r.text }))
+      : undefined,
     attackCount: (challenge.attackSuite || []).length,
     functionalCount: (challenge.functionalSuite || []).length,
     hintCount: (challenge.hints || []).length
