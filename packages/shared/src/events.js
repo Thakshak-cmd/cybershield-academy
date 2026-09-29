@@ -279,3 +279,53 @@ export function timeToFirstAction(events) {
   }
   return out;
 }
+
+/**
+ * @typedef {object} ActivityEntry
+ * @property {"attempt"|"badge"} kind
+ * @property {string} occurredAt       ISO timestamp
+ * @property {string} [challengeId]
+ * @property {boolean} [correct]
+ * @property {number} [xp]             XP paid for this attempt, when it cleared something
+ * @property {string} [badgeId]
+ */
+
+/**
+ * The learner's latest attempts and commendations, newest first, for the shift
+ * log on the briefing screen.
+ *
+ * A clearing attempt is one row, not three: the attempt, completion and XP events
+ * it produces are one thing that happened, and listing them separately would read
+ * as three.
+ *
+ * @param {import("./events.js").TelemetryEvent[]} events
+ * @param {number} [limit]
+ * @returns {ActivityEntry[]}
+ */
+export function recentActivity(events, limit = 6) {
+  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  /** @type {ActivityEntry[]} */
+  const out = [];
+  for (let i = 0; i < ordered.length; i++) {
+    const e = ordered[i];
+    const at = new Date(e.occurredAt).toISOString();
+    if (e.type === "challenge.attempted") {
+      // Only the event straight after: a completion is written in the same append
+      // as the attempt that earned it. Looking further would hand a failed
+      // attempt the XP of the retry that followed it.
+      const next = ordered[i + 1];
+      const completed = e.payload.correct && next?.type === "challenge.completed" &&
+        next.payload.challengeId === e.payload.challengeId ? next : null;
+      out.push({
+        kind: "attempt",
+        occurredAt: at,
+        challengeId: e.payload.challengeId,
+        correct: !!e.payload.correct,
+        ...(completed ? { xp: completed.payload.xpAwarded ?? 0 } : {})
+      });
+    } else if (e.type === "badge.earned") {
+      out.push({ kind: "badge", occurredAt: at, badgeId: e.payload.badgeId });
+    }
+  }
+  return out.reverse().slice(0, limit);
+}

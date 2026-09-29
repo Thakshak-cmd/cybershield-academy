@@ -64,7 +64,7 @@
   .route { animation: none; }
 }
 
-.chrome__nav { display: flex; gap: 4px; margin-left: 8px; }
+.chrome__nav { display: flex; flex-wrap: wrap; gap: 4px; margin-left: 8px; }
 
 .navlink {
   padding: 4px 10px;
@@ -74,6 +74,7 @@
   color: var(--muted);
   text-decoration: none;
   border: 1px solid transparent;
+  white-space: nowrap;
 }
 .navlink:hover { color: var(--ink); }
 .navlink--on {

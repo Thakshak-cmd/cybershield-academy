@@ -1,6 +1,6 @@
 // @ts-check
 import { Router } from "express";
-import { SCHEMA_VERSION, deriveStreaks, derivePosture } from "@cybershield/shared";
+import { SCHEMA_VERSION, deriveStreaks, derivePosture, recentActivity } from "@cybershield/shared";
 import { Challenge, Progress } from "../models/index.js";
 import { append as defaultAppend, bktObservationsFor as defaultObservations, eventsFor as defaultEvents,
          countHints as defaultCountHints, countAttempts as defaultCountAttempts } from "../telemetry.js";
@@ -346,6 +346,8 @@ export function createNextRouter(deps = {}) {
         posture: derivePosture(events, postureCatalogue(state.candidates.map(c => ({
           id: c.challenge_id, isDrill: !!c.is_drill, isBoss: !!c.is_boss
         })))),
+        // The shift log on the briefing screen. Derived like everything else here.
+        recent: recentActivity(events),
         mastery,
         unlocked,
         capstoneUnlocked,

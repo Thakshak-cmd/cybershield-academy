@@ -8,7 +8,7 @@ import { SKILL_ICONS } from "./components/icons.js";
 import { api } from "./api.js";
 import "./ProgressScreen.css";
 
-const SKILL_NAMES = {
+export const SKILL_NAMES = {
   sqli: "SQL Injection",
   xss: "Cross-Site Scripting",
   csrf: "Request Forgery"

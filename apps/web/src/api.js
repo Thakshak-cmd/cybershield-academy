@@ -292,6 +292,8 @@ export const api = {
         xp: 0,
         badges: [],
         streaks: { solve: 0, bestSolve: 0, days: 0 },
+        posture: { score: 0, label: "under attack", closed: 0, total: 13, capstoneHeld: false, incidents: [] },
+        recent: [],
         degraded: false,
         nodes: [
           { id: "sec-101", skill: "sqli", masteryRequired: 0, isDrill: false, isBoss: false, requires: null },

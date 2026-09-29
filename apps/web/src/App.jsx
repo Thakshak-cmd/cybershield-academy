@@ -3,6 +3,7 @@ import { ChallengeScreen } from "./ChallengeScreen.jsx";
 import { ProgressScreen } from "./ProgressScreen.jsx";
 import { BossScreen } from "./BossScreen.jsx";
 import { AuthScreen } from "./AuthScreen.jsx";
+import { HomeScreen } from "./HomeScreen.jsx";
 import { Link, useRoute } from "./useRoute.jsx";
 import { PALETTES, usePalette } from "./usePalette.js";
 import { Icon } from "./components/Icon.jsx";
@@ -63,6 +64,10 @@ export function App() {
           <nav className="chrome__nav" aria-label="Sections">
             <Link to="/" navigate={navigate}
                   className={path === "/" ? "navlink navlink--on" : "navlink"}>
+              Briefing
+            </Link>
+            <Link to="/assignment" navigate={navigate}
+                  className={path === "/assignment" ? "navlink navlink--on" : "navlink"}>
               Assignment
             </Link>
             <Link to="/progress" navigate={navigate}
@@ -131,12 +136,21 @@ export function App() {
       <main className="route" key={session ? path : "signin"}>
         {!session ? (
           <AuthScreen onAuthenticated={setSession} />
+        ) : path === "/assignment" ? (
+          <ChallengeScreen />
         ) : path === "/progress" ? (
-          <ProgressScreen onOpenChallenge={() => navigate("/")} />
+          <ProgressScreen onOpenChallenge={() => navigate("/assignment")} />
         ) : path === "/boss" ? (
           <BossScreen onLeave={() => navigate("/progress")} />
         ) : (
-          <ChallengeScreen />
+          // Anything unrecognised lands on the briefing, the one screen that
+          // always makes sense to arrive at.
+          <HomeScreen
+            handle={session.handle}
+            onTakeTicket={() => navigate("/assignment")}
+            onOpenCapstone={() => navigate("/boss")}
+            onOpenProgress={() => navigate("/progress")}
+          />
         )}
       </main>
     </>
