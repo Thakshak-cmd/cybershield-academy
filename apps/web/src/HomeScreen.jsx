@@ -9,6 +9,13 @@ import { composeBriefing, ago } from "./briefing.js";
 import { api } from "./api.js";
 import "./HomeScreen.css";
 
+/** Titles for the shift log. The full lessons live on the server. */
+const LESSON_TITLES = {
+  "lesson-sqli": "Injected queries",
+  "lesson-xss": "Injected scripts",
+  "lesson-csrf": "Forged requests"
+};
+
 /**
  * The shift briefing: where a signed-in learner lands.
  *
@@ -72,15 +79,18 @@ export function HomeScreen({ handle, onTakeTicket, onOpenCapstone, onOpenProgres
             <ul className="shiftlog">
               {data.recent.map((r, i) => (
                 <li key={i} className={`shiftlog__row shiftlog__row--${
-                  r.kind === "badge" ? "badge" : r.correct ? "held" : "open"}`}>
-                  <Icon name={r.kind === "badge" ? "shieldCheck" : r.correct ? "check" : "fracture"} size={15} />
+                  r.kind === "badge" || r.kind === "lesson" ? "badge" : r.correct ? "held" : "open"}`}>
+                  <Icon name={r.kind === "badge" ? "shieldCheck" : r.kind === "lesson" ? "book"
+                    : r.correct ? "check" : "fracture"} size={15} />
                   <span className="shiftlog__what">
                     {r.kind === "badge"
                       ? <>Commendation: <strong>{badgeName(r.badgeId)}</strong></>
-                      : title(r.challengeId)}
+                      : r.kind === "lesson"
+                        ? <>Briefing: <strong>{LESSON_TITLES[r.lessonId] ?? r.lessonId}</strong></>
+                        : title(r.challengeId)}
                   </span>
                   <span className="shiftlog__outcome label">
-                    {r.kind === "badge" ? "earned"
+                    {r.kind === "badge" ? "earned" : r.kind === "lesson" ? "filed"
                       : r.correct ? (r.xp ? `cleared · +${r.xp} xp` : "held")
                       : isDrill(r.challengeId) ? "missed" : "didn't hold"}
                   </span>

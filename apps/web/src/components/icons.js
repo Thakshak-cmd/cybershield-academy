@@ -100,6 +100,14 @@ export const ICONS = {
     paths: ["M4 9.5h3.5L12 5.5v13l-4.5-4H4z", "M16 9.5l5 5", "M21 9.5l-5 5"]
   },
 
+  /** Lessons: an open briefing file. */
+  book: {
+    paths: [
+      "M3.5 5.5c3-1 5.8-.8 8.5 1v13c-2.7-1.8-5.5-2-8.5-1z",
+      "M20.5 5.5c-3-1-5.8-.8-8.5 1v13c2.7-1.8 5.5-2 8.5-1z"
+    ]
+  },
+
   /** Posture: a gauge needle. */
   gauge: {
     paths: ["M4.5 17a8.5 8.5 0 1 1 15 0", "M12 13.5 16 9"],

@@ -5,6 +5,7 @@ import { requireAuth } from "./auth.js";
 import { attemptRouter } from "./routes/attempt.js";
 import { createNextRouter } from "./routes/next.js";
 import { createAuthRouter } from "./routes/auth.js";
+import { createLessonsRouter } from "./routes/lessons.js";
 
 /**
  * Lazily open (or reuse) the pooled connection for this invocation.
@@ -65,6 +66,7 @@ export function createApp(deps = {}) {
   app.use("/api", requireAuth, withDb, auth);
   app.use("/api", requireAuth, withDb, attemptRouter);
   app.use("/api", requireAuth, withDb, createNextRouter(deps));
+  app.use("/api", requireAuth, withDb, createLessonsRouter(deps));
 
   app.use((err, req, res, _next) => {
     // Logged server-side; the caller learns nothing about internals.

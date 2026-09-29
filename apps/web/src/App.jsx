@@ -4,6 +4,7 @@ import { ProgressScreen } from "./ProgressScreen.jsx";
 import { BossScreen } from "./BossScreen.jsx";
 import { AuthScreen } from "./AuthScreen.jsx";
 import { HomeScreen } from "./HomeScreen.jsx";
+import { ManualScreen } from "./ManualScreen.jsx";
 import { Link, useRoute } from "./useRoute.jsx";
 import { PALETTES, usePalette } from "./usePalette.js";
 import { Icon } from "./components/Icon.jsx";
@@ -69,6 +70,10 @@ export function App() {
             <Link to="/assignment" navigate={navigate}
                   className={path === "/assignment" ? "navlink navlink--on" : "navlink"}>
               Assignment
+            </Link>
+            <Link to="/manual" navigate={navigate}
+                  className={path === "/manual" ? "navlink navlink--on" : "navlink"}>
+              Field manual
             </Link>
             <Link to="/progress" navigate={navigate}
                   className={path === "/progress" ? "navlink navlink--on" : "navlink"}>
@@ -138,6 +143,8 @@ export function App() {
           <AuthScreen onAuthenticated={setSession} />
         ) : path === "/assignment" ? (
           <ChallengeScreen />
+        ) : path === "/manual" ? (
+          <ManualScreen />
         ) : path === "/progress" ? (
           <ProgressScreen onOpenChallenge={() => navigate("/assignment")} />
         ) : path === "/boss" ? (

@@ -21,6 +21,53 @@ Every decision below exists to give defensive work a dramatic beat.
 2. **Patch it.** Editor or guided fix, hints available.
 3. **Watch it bounce.** The same attack replays against the patched code and fails.
 
+## 1a. Instruction before practice: the briefing files
+
+Added 29 Sep 2026. Until then the platform taught only through feedback -- rule
+explanations, hints, the notes on wrong lines -- and never introduced a concept
+before asking for it. For novices that is discovery learning, which the
+worked-example literature finds weaker than explaining first and fading support.
+
+Each skill now has one briefing file (`content/lessons.js`), handed over in
+character before the learner's first ticket in that skill:
+
+1. **Theory.** Three short sections, grounded in Aurora's own code.
+2. **See it happen.** A live simulation: the query rewritten as you type, the
+   elements a browser would build from a note, a forged request narrated with
+   Aurora's defences switched on and off. Nothing is executed. The XSS demo parses
+   into an inert `DOMParser` document and reports what *would* have been built.
+3. **Guided fix.** A faded worked example: Marcus makes the first move, the learner
+   finishes it, scored by the real validator. "Show me" appears after two tries.
+4. **Check.** Two unscored questions, with an explanation for every option.
+
+Filed lessons stay readable in the **field manual**. Unfiled ones stay sealed until
+their ticket arrives, so instruction happens at the same point for everyone.
+
+**Required, and the same for everyone.** The API refuses to start a skill's first
+ticket until its lesson is filed (409), and refuses to file a lesson whose guided fix
+and check were skipped. The within-subjects design needs the intervention to be one
+thing, not whatever each participant chose to read.
+
+**Not evidence for the model.** Lesson events (`lesson.*`) never reach BKT: reading
+an explanation or finishing someone else's worked example is not the unaided
+performance the model estimates. They are logged so the analysis can ask whether the
+lesson predicts first-attempt success.
+
+**Not the ticket's answer.** Each guided fix uses different code from every ticket
+and reference patch -- enforced by a content test -- so the first unaided attempt
+is not a copy.
+
+**Time.** About four minutes each, twelve in total, taken out of challenge time
+within the approved ~60-minute session.
+
+**On composing payloads.** §1 says the learner never composes an attack. The demos
+let a learner type into a simulated search box or delivery note, with a preset for
+the classic textbook example. Nothing is sent anywhere and nothing runs. The only
+output is an explanation of how the input would be read. That is the defensive
+point -- seeing *why* the fix works -- but it is a nuance the LO3 section should
+state rather than leave for a marker to find. Restricting the demos to presets
+only is a one-line change if the stricter reading is preferred.
+
 ## 2. The win condition: two suites in tension
 
 A patch must satisfy both:

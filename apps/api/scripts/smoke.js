@@ -106,13 +106,36 @@ async function main() {
   check("hides the attack suite", !("attackSuite" in (next.challenge ?? {})));
   check("hides the hints", !("hints" in (next.challenge ?? {})));
 
-  // --- 2. open it --------------------------------------------------------
-  console.log(bold("\n2. POST /api/challenges/sec-101/start"));
+  check("names the briefing due before a first ticket", !!next.lesson?.id, dim(next.lesson?.id ?? "none"));
+
+  // --- 2. the briefing ----------------------------------------------------
+  console.log(bold("\n2. The SQL injection briefing"));
+  const { lessonById } = await import("../../../content/lessons.js");
+  const lesson = /** @type {any} */ (lessonById("lesson-sqli"));
+  const post = (path, body = {}) => fetch(`${base}/api/lessons/lesson-sqli${path}`, {
+    method: "POST", headers: auth, body: JSON.stringify(body)
+  });
+
+  const gated = await fetch(`${base}/api/challenges/sec-101/start`, { method: "POST", headers: auth });
+  check("the ticket is refused until the briefing is done", gated.status === 409, `got ${gated.status}`);
+
+  const opened = await (await fetch(`${base}/api/lessons/lesson-sqli`, { headers: auth })).json();
+  check("the briefing opens without its answers", !JSON.stringify(opened).includes(lesson.guided.solution));
+  const miss = await (await post("/practice", { source: lesson.guided.start })).json();
+  check("the guided fix starts unfinished", miss.passed === false, dim(miss.failedRules?.join(", ")));
+  const hit = await (await post("/practice", { source: lesson.guided.solution })).json();
+  check("and passes once finished", hit.passed === true);
+  for (const q of lesson.check) await post("/check", { questionId: q.id, choice: q.answer });
+  const filed = await post("/complete", { durationMs: 240000 });
+  check("filed in the manual", filed.status === 200, `got ${filed.status}`);
+
+  // --- 3. open it --------------------------------------------------------
+  console.log(bold("\n3. POST /api/challenges/sec-101/start"));
   const startRes = await fetch(`${base}/api/challenges/sec-101/start`, { method: "POST", headers: auth });
   check("responds 200", startRes.status === 200, `got ${startRes.status}`);
 
-  // --- 3. submit a bad patch --------------------------------------------
-  console.log(bold("\n3. POST attempt - the naive fix"));
+  // --- 4. submit a bad patch --------------------------------------------
+  console.log(bold("\n4. POST attempt - the naive fix"));
   const badPatch = `app.get('/api/search', async (req, res) => {
     const { term } = req.query;
     const safe = term.replace(/'/g, '');
@@ -132,8 +155,8 @@ async function main() {
   check("awards no XP", badBody.xpAwarded === 0);
   check("counts toward mastery", badBody.countedForMastery === true);
 
-  // --- 4. submit the correct patch --------------------------------------
-  console.log(bold("\n4. POST attempt - the parameterised query"));
+  // --- 5. submit the correct patch --------------------------------------
+  console.log(bold("\n5. POST attempt - the parameterised query"));
   const goodPatch = `app.get('/api/search', async (req, res) => {
     const { term } = req.query;
     const sql = 'SELECT id, name, price FROM products WHERE name LIKE ?';
@@ -151,8 +174,8 @@ async function main() {
   check("second attempt earns the retry rate", goodBody.xpAwarded === 25, dim(`got ${goodBody.xpAwarded}`));
   check("does not count toward mastery", goodBody.countedForMastery === false, dim("attempt 2"));
 
-  // --- 5. the log --------------------------------------------------------
-  console.log(bold("\n5. The event log"));
+  // --- 6. the log --------------------------------------------------------
+  console.log(bold("\n6. The event log"));
   const events = await Event.find({ subjectId: "subj_smoke" }).sort({ seq: 1 }).lean();
   for (const e of events) {
     console.log(dim(`  ${String(e.seq).padStart(2)} ${e.type}`));
@@ -177,8 +200,8 @@ async function main() {
   check("follow rate computes", Number.isFinite(rate) && rate >= 0 && rate <= 1,
         dim(String(rate)));
 
-  // --- 6. mastery moved --------------------------------------------------
-  console.log(bold("\n6. GET /api/next again"));
+  // --- 7. mastery moved --------------------------------------------------
+  console.log(bold("\n7. GET /api/next again"));
   const next2 = await (await fetch(`${base}/api/next`, { headers: auth })).json();
   check("mastery updated after the attempts",
         next2.mastery?.sqli !== next.mastery?.sqli,

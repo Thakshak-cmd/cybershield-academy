@@ -65,6 +65,13 @@ events remain interpretable rather than silently mis-parsed.
 | `mastery.updated` | BKT posterior recomputed | `skill`, `pMasteryBefore`, `pMasteryAfter` |
 | `recommendation.served` | Adaptive engine picks next challenge | `challengeId`, `pMastery`, `policy`, `reason` |
 | `session.started` / `session.ended` | Session boundaries | `sessionId`, `durationMs` |
+| `lesson.started` | A briefing file is opened | `lessonId`, `skill`, `reread` |
+| `lesson.practised` | The guided fix is checked | `attemptNo`, `passed`, `failedRules[]`, `submissionHash` |
+| `lesson.revealed` | "Show me" after two tries | `lessonId` |
+| `lesson.checked` | A check question is answered | `questionId`, `choice`, `correct` |
+| `lesson.completed` | The lesson is filed | `durationMs`, `reread` |
+
+Lesson events are never BKT observations. See game-design.md §1a.
 
 ### The BKT observation
 

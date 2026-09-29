@@ -281,3 +281,22 @@ describe("the capstone, persisted", () => {
     assert.ok(attempts.every(e => e.payload.countsForBkt === false));
   });
 });
+
+describe("lessons, persisted", () => {
+  test("completion, practice and the check are read back from the log", async () => {
+    const e = (type, payload) => ({ ...draft(type, payload), subjectId: "subj_l" });
+    await telemetry.append("subj_l", [
+      e("lesson.practised", { lessonId: "lesson-sqli", passed: false }),
+      e("lesson.practised", { lessonId: "lesson-sqli", passed: true }),
+      e("lesson.checked", { lessonId: "lesson-sqli", questionId: "obrien", correct: true }),
+      e("lesson.completed", { lessonId: "lesson-sqli", reread: false }),
+      e("lesson.practised", { lessonId: "lesson-xss", passed: false })
+    ]);
+    assert.deepEqual(await telemetry.lessonsCompleted("subj_l"), ["lesson-sqli"]);
+    assert.deepEqual(await telemetry.lessonPractice("subj_l", "lesson-sqli"), { attempts: 2, done: true });
+    assert.deepEqual(await telemetry.lessonPractice("subj_l", "lesson-xss"), { attempts: 1, done: false });
+    assert.deepEqual(await telemetry.lessonPractice("subj_l", "lesson-csrf"), { attempts: 0, done: false });
+    // None of it is evidence for the model.
+    assert.deepEqual(await telemetry.bktObservationsFor("subj_l"), []);
+  });
+});

@@ -1,0 +1,19 @@
+.manual { max-width: 820px; margin: 0 auto; padding: 20px 20px 64px; }
+.manual__loading, .manual__error { padding: 48px; text-align: center; }
+.manual__error { color: var(--breach); }
+.manual__intro { margin: 0 0 16px; color: var(--ink-2); font-size: 14.5px; line-height: 1.6; }
+
+.manual__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.manual__item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.manual__item:last-child { border-bottom: 0; }
+.manual__item .portrait { margin: 0; }
+.manual__item--sealed { opacity: .55; }
+.manual__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.manual__title { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.manual__title .icon { color: var(--muted); }
+.manual__open { width: auto; }
+.manual__lock { color: var(--muted); margin-right: 10px; }

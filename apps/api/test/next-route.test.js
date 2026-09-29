@@ -87,7 +87,10 @@ before(async () => {
     loadTitles: async () => ({ "sec-101": { title: "The product search box", tier: "beginner" } }),
     loadEvents: async () => [],
     countHints: async () => 0,
-    countAttempts: async () => 0
+    countAttempts: async () => 0,
+    // Lessons done, so the older tests see the flow they were written for; the
+    // gate has its own tests below.
+    loadLessonsDone: async () => ["lesson-sqli", "lesson-xss", "lesson-csrf"]
   }));
   app.use((err, _req, res, _next) => res.status(500).json({ error: err.message }));
 
@@ -185,7 +188,8 @@ describe("spot items over the wire", () => {
       append: async (_s, ev) => ev.map((e, i) => ({ ...e, seq: i + 1 })),
       findChallenge: async () => spot,
       loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] }),
-      countHints: async () => 0
+      countHints: async () => 0,
+      loadLessonsDone: async () => ["lesson-sqli", "lesson-xss", "lesson-csrf"]
     }));
     const srv = app.listen(0);
     await new Promise(r => srv.once("listening", r));
@@ -219,7 +223,8 @@ describe("review items over the wire", () => {
       append: async (_s, ev) => ev.map((e, i) => ({ ...e, seq: i + 1 })),
       findChallenge: async () => review,
       loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] }),
-      countHints: async () => 0
+      countHints: async () => 0,
+      loadLessonsDone: async () => ["lesson-sqli", "lesson-xss", "lesson-csrf"]
     }));
     const srv = app.listen(0);
     await new Promise(r => srv.once("listening", r));
@@ -434,5 +439,65 @@ describe("the capstone gate", () => {
     assert.equal(opened.status, 503);
     assert.equal(tried.status, 503);
     assert.equal(recorded.length, 0);
+  });
+});
+
+
+describe("the lesson gate", () => {
+  /** @param {string[]} done */
+  async function gateApp(done) {
+    const appended = [];
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, nxt) => { req.auth = { subjectId: "s", sessionId: "x", isStudyParticipant: true }; nxt(); });
+    app.use("/api", createNextRouter({
+      mlClient: fakeMl,
+      append: async (_s, ev) => { appended.push(...ev); return ev.map((e, i) => ({ ...e, seq: i + 1 })); },
+      findChallenge: async id => (id === CHALLENGE.id ? { ...CHALLENGE } : null),
+      loadState: async () => ({ observations: [], candidates: [], cleared: [], unlocked: [] }),
+      countHints: async () => 0,
+      loadLessonsDone: async () => done
+    }));
+    const srv = app.listen(0);
+    await new Promise(r => srv.once("listening", r));
+    const base = `http://localhost:${/** @type {import("node:net").AddressInfo} */ (srv.address()).port}/api`;
+    return { base, appended, close: () => srv.close() };
+  }
+
+  test("a first ticket in a skill names the briefing that is due, and keeps the recommendation", async () => {
+    mlBehaviour = "ok";
+    const { base, appended, close } = await gateApp([]);
+    const body = await (await fetch(base + "/next")).json();
+    close();
+    assert.equal(body.lesson?.id, "lesson-sqli");
+    assert.equal(body.challenge.id, "sec-104");
+    assert.ok(appended.some(e => e.type === "recommendation.served"));
+  });
+
+  test("the ticket cannot be started until the briefing is done", async () => {
+    const { base, appended, close } = await gateApp([]);
+    const res = await fetch(base + "/challenges/sec-104/start", { method: "POST" });
+    const body = await res.json();
+    close();
+    assert.equal(res.status, 409);
+    assert.equal(body.lessonRequired, "lesson-sqli");
+    assert.ok(!appended.some(e => e.type === "challenge.started"), "nothing is recorded as started");
+  });
+
+  test("once it is done, nothing is due and the ticket opens", async () => {
+    mlBehaviour = "ok";
+    const { base, close } = await gateApp(["lesson-sqli"]);
+    const next = await (await fetch(base + "/next")).json();
+    const start = await fetch(base + "/challenges/sec-104/start", { method: "POST" });
+    close();
+    assert.equal(next.lesson, null);
+    assert.equal(start.status, 200);
+  });
+
+  test("another skill's briefing does not open this one", async () => {
+    const { base, close } = await gateApp(["lesson-xss", "lesson-csrf"]);
+    const res = await fetch(base + "/challenges/sec-104/start", { method: "POST" });
+    close();
+    assert.equal(res.status, 409);
   });
 });

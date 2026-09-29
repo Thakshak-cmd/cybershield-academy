@@ -3,7 +3,9 @@ import { Router } from "express";
 import { SCHEMA_VERSION, deriveStreaks, derivePosture, recentActivity } from "@cybershield/shared";
 import { Challenge, Progress } from "../models/index.js";
 import { append as defaultAppend, bktObservationsFor as defaultObservations, eventsFor as defaultEvents,
-         countHints as defaultCountHints, countAttempts as defaultCountAttempts } from "../telemetry.js";
+         countHints as defaultCountHints, countAttempts as defaultCountAttempts,
+         lessonsCompleted as defaultLessonsCompleted } from "../telemetry.js";
+import { lessonForSkill } from "../../../../content/lessons.js";
 import { recordAttempt as defaultRecordAttempt, postureCatalogue } from "../record-attempt.js";
 import { BADGES } from "../../../../content/badges.js";
 import { createMlClient, MlServiceError } from "../ml-client.js";
@@ -31,7 +33,8 @@ const MAX_BOSS_BYTES = 80_000;
  *   loadEvents?: (subjectId: string) => Promise<import("@cybershield/shared").TelemetryEvent[]>,
  *   countHints?: (subjectId: string, challengeId: string) => Promise<number>,
  *   countAttempts?: (subjectId: string, challengeId: string) => Promise<number>,
- *   recordAttempt?: typeof defaultRecordAttempt
+ *   recordAttempt?: typeof defaultRecordAttempt,
+ *   loadLessonsDone?: (subjectId: string) => Promise<string[]>
  * }} [deps]
  */
 export function createNextRouter(deps = {}) {
@@ -47,6 +50,27 @@ export function createNextRouter(deps = {}) {
   const countHints = deps.countHints ?? defaultCountHints;
   const countAttempts = deps.countAttempts ?? defaultCountAttempts;
   const recordAttempt = deps.recordAttempt ?? defaultRecordAttempt;
+  const loadLessonsDone = deps.loadLessonsDone ?? defaultLessonsCompleted;
+
+  /**
+   * The lesson a learner must finish before this challenge, if any.
+   *
+   * Required the first time, for everyone, so every participant receives the
+   * same instruction before their first ticket in a skill -- the within-subjects
+   * design needs the intervention to be one thing, not whatever each learner
+   * chose to read. The capstone has no lesson of its own: it is only reachable
+   * once all three skills are strong, by which point all three are done.
+   *
+   * @param {string} subjectId
+   * @param {LeanChallenge} challenge
+   */
+  async function lessonDue(subjectId, challenge) {
+    if (challenge.isBoss) return null;
+    const lesson = lessonForSkill(challenge.skill);
+    if (!lesson) return null;
+    const done = await loadLessonsDone(subjectId);
+    return done.includes(lesson.id) ? null : lesson;
+  }
 
   /**
    * GET /api/next
@@ -105,8 +129,13 @@ export function createNextRouter(deps = {}) {
         }
       }]);
 
+      const due = await lessonDue(subjectId, challenge);
+
       res.json({
         challenge: publicChallenge(challenge),
+        // Present when the learner has to take this skill's briefing first. The
+        // recommendation stands: the ticket that follows the lesson is this one.
+        lesson: due ? { id: due.id, title: due.title, skill: due.skill, from: due.from } : null,
         pMastery: rec.pMastery,
         policy: rec.policy,
         reason: rec.reason,
@@ -132,6 +161,14 @@ export function createNextRouter(deps = {}) {
 
       const challenge = await findChallenge(req.params.id);
       if (!challenge) return res.status(404).json({ error: "No such challenge." });
+
+      const due = await lessonDue(subjectId, challenge);
+      if (due) {
+        return res.status(409).json({
+          error: `Take the briefing on ${due.title.toLowerCase()} first.`,
+          lessonRequired: due.id
+        });
+      }
 
       const revealed = await countHints(subjectId, challenge.id);
 

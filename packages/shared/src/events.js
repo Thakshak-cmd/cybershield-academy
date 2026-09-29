@@ -20,7 +20,14 @@ export const EVENT_TYPES = /** @type {const} */ ([
   "mastery.updated",
   "recommendation.served",
   "session.started",
-  "session.ended"
+  "session.ended",
+  // Lessons. None of these is a BKT observation: reading an explanation, or
+  // finishing a worked example someone else started, is not evidence of skill.
+  "lesson.started",
+  "lesson.practised",
+  "lesson.revealed",
+  "lesson.checked",
+  "lesson.completed"
 ]);
 
 /** @typedef {(typeof EVENT_TYPES)[number]} TelemetryEventType */
@@ -282,12 +289,13 @@ export function timeToFirstAction(events) {
 
 /**
  * @typedef {object} ActivityEntry
- * @property {"attempt"|"badge"} kind
+ * @property {"attempt"|"badge"|"lesson"} kind
  * @property {string} occurredAt       ISO timestamp
  * @property {string} [challengeId]
  * @property {boolean} [correct]
  * @property {number} [xp]             XP paid for this attempt, when it cleared something
  * @property {string} [badgeId]
+ * @property {string} [lessonId]
  */
 
 /**
@@ -325,6 +333,8 @@ export function recentActivity(events, limit = 6) {
       });
     } else if (e.type === "badge.earned") {
       out.push({ kind: "badge", occurredAt: at, badgeId: e.payload.badgeId });
+    } else if (e.type === "lesson.completed" && !e.payload.reread) {
+      out.push({ kind: "lesson", occurredAt: at, lessonId: e.payload.lessonId });
     }
   }
   return out.reverse().slice(0, limit);

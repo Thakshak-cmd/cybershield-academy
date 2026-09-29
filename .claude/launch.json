@@ -29,6 +29,15 @@
         "@cybershield/web"
       ],
       "port": 5173
+    },
+    {
+      "name": "verify-alt",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "PORT=3101 node apps/api/scripts/dev-server.js & API_TARGET=http://localhost:3101 npm run dev --workspace @cybershield/web -- --port 5273 --strictPort"
+      ],
+      "port": 5273
     }
   ]
 }

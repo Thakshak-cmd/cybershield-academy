@@ -44,6 +44,14 @@ after(async () => {
 beforeEach(async () => {
   await Promise.all([models.Event.deleteMany({}), models.Counter.deleteMany({}), models.Progress.deleteMany({})]);
   token = jwt.sign({ sub: "subj_h", sid: "sess_h", study: true }, process.env.JWT_SECRET);
+  // sec-101 is gated behind the SQL injection briefing. This learner has filed
+  // it, so these tests exercise hints rather than the gate, which has its own.
+  const { append } = await import("../src/telemetry.js");
+  await append("subj_h", [{
+    schemaVersion: 1, subjectId: "subj_h", sessionId: "sess_h", occurredAt: new Date(),
+    isStudyParticipant: true, type: "lesson.completed",
+    payload: { lessonId: "lesson-sqli", skill: "sqli", durationMs: 0, reread: false }
+  }]);
 });
 
 const post = (path, body = {}) => fetch(base + path, {

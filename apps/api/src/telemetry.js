@@ -104,3 +104,28 @@ export async function bktObservationsFor(subjectId) {
 export async function eventsFor(subjectId) {
   return /** @type {any} */ (Event.find({ subjectId }).sort({ seq: 1 }).lean());
 }
+
+/**
+ * Which lessons this learner has finished at least once.
+ *
+ * @param {string} subjectId
+ * @returns {Promise<string[]>}
+ */
+export async function lessonsCompleted(subjectId) {
+  return /** @type {string[]} */ (await Event.distinct("payload.lessonId", {
+    subjectId, type: "lesson.completed"
+  }));
+}
+
+/** Guided-fix attempts at a lesson, and whether any passed or was revealed. */
+export async function lessonPractice(subjectId, lessonId) {
+  const rows = await Event.find(
+    { subjectId, type: { $in: ["lesson.practised", "lesson.revealed"] }, "payload.lessonId": lessonId },
+    { type: 1, "payload.passed": 1 }
+  ).lean();
+  const attempts = rows.filter(r => r.type === "lesson.practised");
+  return {
+    attempts: attempts.length,
+    done: rows.some(r => r.type === "lesson.revealed" || /** @type {any} */ (r).payload?.passed)
+  };
+}

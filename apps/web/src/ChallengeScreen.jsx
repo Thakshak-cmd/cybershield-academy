@@ -4,6 +4,7 @@ import { Reward } from "./components/Reward.jsx";
 import { Portrait } from "./components/Portrait.jsx";
 import { DiffView } from "./components/DiffView.jsx";
 import { PostureGauge } from "./components/PostureGauge.jsx";
+import { LessonScreen } from "./LessonScreen.jsx";
 import { play } from "./sound.js";
 import { api } from "./api.js";
 import "./ChallengeScreen.css";
@@ -32,12 +33,29 @@ export function ChallengeScreen() {
   const [decision, setDecision] = useState(/** @type {"approve"|"reject"|null} */ (null));
   const [rejectReason, setRejectReason] = useState(/** @type {string|null} */ (null));
   const [error, setError] = useState(/** @type {string|null} */ (null));
+  const [briefing, setBriefing] = useState(/** @type {{ lessonId: string, next: any }|null} */ (null));
   const openedAt = useRef(Date.now());
 
-  /** Fetch whatever the adaptive layer serves next and reset the screen for it. */
+  /**
+   * Fetch whatever the adaptive layer serves next and reset the screen for it.
+   *
+   * If this is the learner's first ticket in a skill, the server says which
+   * briefing is due and the lesson comes first. The recommendation is kept and
+   * opened afterwards, so the ticket that follows the lesson is the one the
+   * model chose -- follow-through is unaffected.
+   */
   async function load(isCancelled = () => false) {
     const next = await api.next();
     if (isCancelled() || !next.challenge) return;
+    if (next.lesson) {
+      setBriefing({ lessonId: next.lesson.id, next });
+      return;
+    }
+    await open(next, isCancelled);
+  }
+
+  /** @param {any} next */
+  async function open(next, isCancelled = () => false) {
     const started = await api.start(next.challenge.id);
     if (isCancelled()) return;
     setChallenge(next.challenge);
@@ -111,6 +129,20 @@ export function ChallengeScreen() {
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  if (briefing) {
+    return (
+      <LessonScreen
+        lessonId={briefing.lessonId}
+        onDone={async () => {
+          const { next } = briefing;
+          setBriefing(null);
+          await open(next);
+          window.scrollTo({ top: 0 });
+        }}
+      />
+    );
   }
 
   if (!challenge) {

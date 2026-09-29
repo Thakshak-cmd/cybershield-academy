@@ -31,10 +31,11 @@ Being different from these is not the same as ignoring what they get right.
 - **Time to first action** — W3Schools' "2 minutes" is the right metric. Sign-in to
   first attempt is derivable from `session.started` and the first
   `challenge.attempted`, and is reported in the study analysis. Since the shift
-  briefing was added, every learner lands on it first, so the interval includes
-  reading it and choosing to take a ticket. That applies to all participants
+  briefing and the lessons were added, every learner lands on the briefing and
+  takes their first skill's lesson (about four minutes) before their first
+  attempt, so the interval includes both. That applies to all participants
   equally, but it should be stated when the number is reported, and it is not
-  comparable to pilot sessions run before the briefing existed.
+  comparable to pilot sessions run before these existed.
 - **Bite-sized items** — the 30–60 second "spot the flaw" format in game-design.md
   section 3. Beyond pacing, every one is a first-attempt BKT observation, which is
   what makes the model viable on a small sample.

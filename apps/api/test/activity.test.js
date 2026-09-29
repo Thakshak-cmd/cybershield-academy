@@ -34,6 +34,15 @@ describe("the shift log", () => {
     assert.deepEqual(rows.map(r => r.challengeId), ["c9", "c8", "c7"]);
   });
 
+  test("a filed lesson is logged, a reread is not", () => {
+    seq = 0;
+    const rows = recentActivity([
+      ev("lesson.completed", { lessonId: "lesson-sqli", reread: false }),
+      ev("lesson.completed", { lessonId: "lesson-sqli", reread: true })
+    ]);
+    assert.deepEqual(rows.map(r => [r.kind, r.lessonId]), [["lesson", "lesson-sqli"]]);
+  });
+
   test("an empty history is an empty log", () => {
     assert.deepEqual(recentActivity([]), []);
   });

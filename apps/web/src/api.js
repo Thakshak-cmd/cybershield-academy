@@ -308,6 +308,36 @@ export const api = {
     return call("/api/progress");
   },
 
+  // ---- lessons -------------------------------------------------------- //
+  // No offline fallback: the guided fix is scored by the real validator, and a
+  // lesson that could not record its completion would gate the ticket forever.
+
+  async lessons() {
+    if (!(await this.connect())) throw new Error("The field manual needs the API running.");
+    return call("/api/lessons");
+  },
+
+  async lesson(id) {
+    if (!(await this.connect())) throw new Error("Briefings need the API running.");
+    return call(`/api/lessons/${id}`);
+  },
+
+  async practiseLesson(id, source) {
+    return call(`/api/lessons/${id}/practice`, { method: "POST", body: JSON.stringify({ source }) });
+  },
+
+  async revealLesson(id) {
+    return call(`/api/lessons/${id}/reveal`, { method: "POST" });
+  },
+
+  async checkLesson(id, questionId, choice) {
+    return call(`/api/lessons/${id}/check`, { method: "POST", body: JSON.stringify({ questionId, choice }) });
+  },
+
+  async completeLesson(id, durationMs) {
+    return call(`/api/lessons/${id}/complete`, { method: "POST", body: JSON.stringify({ durationMs }) });
+  },
+
   async boss(id) {
     if (!(await this.connect())) throw new Error("The encounter needs the API running.");
     return call(`/api/boss/${id}`);
