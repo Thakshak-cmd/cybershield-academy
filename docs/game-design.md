@@ -45,12 +45,20 @@ Worked example — SEC-104, three plausible patches:
 
 One format twenty times is a worksheet. Target mix (~20 items, ~60 min session):
 
-| Format | Time | Count | Role |
-|---|---|---|---|
-| Spot the flaw | 30-60s | ~8 | Warm-up; cheap to author; each is a BKT observation |
-| Patch the code | 4-8 min | ~6 | The core loop |
-| Harden the config | 2-4 min | ~3 | CSP, SameSite, DB grants — security outside app code |
-| Review the fix | 2-4 min | ~3 | Judging a fix is a distinct skill from writing one |
+| Format | Time | Target | Shipped | Role |
+|---|---|---|---|---|
+| Spot the flaw | 30-60s | ~8 | 6 | Warm-up; cheap to author; each is a BKT observation |
+| Patch the code | 4-8 min | ~6 | 7 | The core loop |
+| Harden the config | 2-4 min | ~3 | 3 | CSP, SameSite, DB grants — security outside app code |
+| Review the fix | 2-4 min | ~3 | 3 | Judging a fix is a distinct skill from writing one |
+| Capstone | 10-15 min | 1-2 | 1 | All three skills in one incident; never a BKT observation |
+
+Twenty items in all. Each skill is a ladder: spot the flaw, patch it, review a
+colleague's patch, harden the configuration around it, then an advanced patch
+(ORDER BY allowlisting for SQLi, `javascript:` URLs for XSS). A review item is
+scored on the decision *and* the reason: rejecting a sound fix, merging an unsound
+one, and rejecting for the wrong reason each fail a different rule, so the two
+suites stay in tension even without code.
 
 Spot-the-flaw items are not filler: they are the cheapest way to raise the
 observation count per skill, which is what makes BKT viable on a small sample (R3).
@@ -68,7 +76,11 @@ undercut the engagement thesis.
 - **Quest chains** — challenges grouped into narrative arcs.
 - **Boss encounters** — capstone challenges combining multiple vulnerability classes.
 - **Consequence** — failure lets the breach progress; the company's security posture
-  visibly degrades.
+  visibly degrades. *Implemented as Aurora's posture* (`packages/shared/src/posture.js`):
+  closing holes raises it, a failed attempt on a real hole is an incident that lowers
+  it, and incidents fade after eight attempts so early failure does not scar. Drills
+  never cause incidents. A failure at zero is still shown as an incident, because
+  early on is when failures are most common and the score cannot fall further.
 
 **Rejected — simulation machinery:** overworld map and movement, dialogue trees,
 inventory and loot, party members, battle animations, procedural generation. These
@@ -217,7 +229,9 @@ stated control.
 
 The RPG framing plus visual treatment costs roughly three weeks over the plain
 ticket-based design. Paid for by holding challenge count at ~20 (down from ~26) and
-shipping two boss encounters rather than three.
+shipping two boss encounters rather than three. In the event one shipped (the
+Aurora Breach), locked server-side until the model reports all three skills
+strong enough.
 
 **Art is the most compressible part of the project.** If week 9 is behind, the
 platform ships with placeholder chrome and the study still runs. If the validation
