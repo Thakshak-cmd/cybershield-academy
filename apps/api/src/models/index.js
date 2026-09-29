@@ -98,6 +98,16 @@ const ChallengeSchema = new Schema({
   flawedLines: { type: [Number], default: undefined },
   decoyLines: { type: Schema.Types.Mixed, default: undefined },
 
+  // Review the fix: a teammate's proposed patch and the verdict it deserves.
+  // `sound`, `correctReason` and `reasonExplanations` are the answer, and never
+  // leave the server -- see publicChallenge.
+  proposed: { type: String, default: undefined },
+  prAuthor: { type: String, default: undefined },
+  sound: { type: Boolean, default: undefined },
+  reasons: { type: [Schema.Types.Mixed], default: undefined },
+  correctReason: { type: String, default: undefined },
+  reasonExplanations: { type: Schema.Types.Mixed, default: undefined },
+
   meta: { type: Schema.Types.Mixed, default: {} },
   rules: { type: [String], default: [] },
   attackSuite: { type: [Schema.Types.Mixed], default: [] },

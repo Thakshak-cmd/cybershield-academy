@@ -1,0 +1,55 @@
+{
+  "id": "harden-301",
+  "title": "The session cookie goes wherever it is asked",
+  "skill": "csrf",
+  "subSkill": "csrf.samesite",
+  "tier": "intermediate",
+  "format": "harden",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "file": "server/session.js",
+  "reportedBy": "Marcus (Incident Response)",
+  "masteryRequired": 0.45,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": "review-301",
+  "brief": "A token check closes a forged request on one endpoint. The cookie's own settings can close it on all of them at once, by telling the browser not to attach the session to requests another site starts. Get it right without signing out every customer who clicks a link in their order email.",
+  "vulnerable": "app.use(session({\n  secret: process.env.SESSION_SECRET,\n  resave: false,\n  saveUninitialized: false,\n  cookie: {\n    httpOnly: false,\n    secure: true,\n    sameSite: 'none',\n    maxAge: 1000 * 60 * 60 * 8\n  }\n}));",
+  "meta": {},
+  "rules": [
+    "cookie.samesite-restricted",
+    "cookie.not-script-readable",
+    "cookie.still-issued",
+    "cookie.survives-email-links"
+  ],
+  "attackSuite": [
+    {
+      "payload": "An auto-submitting form on another site",
+      "label": "Rides the session cross-site"
+    },
+    {
+      "payload": "document.cookie read by an injected script",
+      "label": "Steals the session outright"
+    }
+  ],
+  "functionalSuite": [
+    {
+      "value": "Browsing and checking out",
+      "label": "Staying signed in"
+    },
+    {
+      "value": "Clicking 'view your order' in the confirmation email",
+      "label": "Arriving signed in"
+    }
+  ],
+  "hints": [
+    "Two settings are wrong here, and they protect against different attacks.",
+    "SameSite has three values. One is what we have, one is too strict for a shop, one is right.",
+    "sameSite: 'lax' and httpOnly: true."
+  ],
+  "xp": {
+    "firstAttempt": 110,
+    "withHints": 55,
+    "retry": 35
+  }
+}

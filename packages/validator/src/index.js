@@ -188,3 +188,77 @@ export function validateSpot(challenge, selected) {
     failedRules: all.filter(r => !r.pass).map(r => r.id)
   };
 }
+
+/**
+ * Score a code review.
+ *
+ * A teammate proposes a fix; the learner approves it, or rejects it and says why.
+ * Judging a fix is a different skill from writing one -- and in practice the more
+ * common one, since most code a developer ships past was written by someone else.
+ *
+ * The verdict keeps the two suites. Merging an unsafe fix fails the security suite;
+ * rejecting a sound one fails the functional suite, because a correct patch held in
+ * review leaves the hole open while the team argues. For an unsafe fix, rejecting
+ * it for the wrong reason also fails: "this is wrong" without knowing why is a
+ * guess, and the next patch the same reviewer approves will prove it.
+ *
+ * @param {{ sound: boolean, correctReason?: string,
+ *           reasonExplanations?: Record<string, string> }} challenge
+ * @param {{ decision?: string, reason?: string }} answer
+ */
+export function validateReview(challenge, answer) {
+  const decision = answer?.decision;
+  const reason = answer?.reason;
+  const approved = decision === "approve";
+  const rejected = decision === "reject";
+  const explain = id => challenge.reasonExplanations?.[id] ?? null;
+
+  const security = [{
+    id: "review.no-unsafe-merge",
+    kind: "security",
+    describe: "An unsafe fix is not approved",
+    pass: !(approved && !challenge.sound),
+    evidence: approved && !challenge.sound
+      ? "this patch still lets the attack in, and approving it ships it"
+      : null
+  }];
+
+  const functional = [{
+    id: "review.no-sound-rejection",
+    kind: "functional",
+    describe: "A correct fix is not held back",
+    pass: !(rejected && challenge.sound),
+    evidence: rejected && challenge.sound
+      ? (explain(reason) ?? "this patch is correct") + " -- holding it back leaves the hole open"
+      : null
+  }];
+
+  if (!challenge.sound) {
+    const named = rejected && reason === challenge.correctReason;
+    functional.push({
+      id: "review.names-the-flaw",
+      kind: "functional",
+      describe: "The rejection names what is actually wrong",
+      pass: named,
+      evidence: named ? null
+        : !rejected ? "the flaw was not identified"
+        : !reason ? "a rejection needs a reason"
+        : explain(reason) ?? "that is not what makes this patch unsafe"
+    });
+  }
+
+  if (!approved && !rejected) {
+    security[0].pass = false;
+    security[0].evidence = "no decision was made";
+  }
+
+  const all = [...security, ...functional];
+  const bucket = list => ({ passed: list.filter(r => r.pass).length, total: list.length, results: list });
+  return {
+    passed: all.every(r => r.pass),
+    parseError: null,
+    security: bucket(security),
+    functional: bucket(functional),
+    failedRules: all.filter(r => !r.pass).map(r => r.id)
+  };
+}

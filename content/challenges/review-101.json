@@ -1,0 +1,67 @@
+{
+  "id": "review-101",
+  "title": "Dan says his patch makes injection impossible",
+  "skill": "sqli",
+  "subSkill": "sqli.parameterised-query",
+  "tier": "intermediate",
+  "format": "review",
+  "validator": "review",
+  "repo": "aurora-store",
+  "file": "routes/orders.js",
+  "reportedBy": "Dan (QA)",
+  "masteryRequired": 0.3,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": "sec-104",
+  "brief": "Dan has opened a pull request against the order lookup. His description reads: \"Escaped the quotes, so injection is now impossible. Quick one to merge.\" It is your review.",
+  "vulnerable": "app.get('/api/orders/:id', async (req, res) => {\n  const sql = `SELECT * FROM orders\n     WHERE id = ${req.params.id}\n     AND user_id = ${req.session.userId}`;\n  const [order] = await db.query(sql);\n  res.json(order ?? null);\n});",
+  "proposed": "app.get('/api/orders/:id', async (req, res) => {\n  const id = req.params.id.replace(/'/g, \"''\");\n  const sql = `SELECT * FROM orders\n     WHERE id = ${id}\n     AND user_id = ${req.session.userId}`;\n  const [order] = await db.query(sql);\n  res.json(order ?? null);\n});",
+  "prAuthor": "Dan (QA)",
+  "sound": false,
+  "reasons": [
+    {
+      "id": "backslash",
+      "text": "Doubling quotes is not enough escaping; backslashes also need handling."
+    },
+    {
+      "id": "numeric",
+      "text": "The id sits in the query with no quotes around it, so an attack never needs a quote."
+    },
+    {
+      "id": "userid",
+      "text": "req.session.userId is spliced in too, and that is the real risk."
+    },
+    {
+      "id": "performance",
+      "text": "Running replace() on every request will slow the endpoint down."
+    }
+  ],
+  "correctReason": "numeric",
+  "reasonExplanations": {
+    "backslash": "true in some databases, but not the problem here: this attack needs no quote to escape in the first place",
+    "userid": "userId comes from the server's own session, not from the request, so the attacker cannot choose it",
+    "performance": "a replace() on a short string costs microseconds; the patch is unsafe, not slow",
+    "numeric": "this patch is not correct -- 1 OR 1=1 contains no quote at all"
+  },
+  "attackSuite": [
+    {
+      "payload": "/api/orders/1 OR 1=1",
+      "label": "Every order, no quote needed"
+    }
+  ],
+  "functionalSuite": [
+    {
+      "value": "/api/orders/40221",
+      "label": "A customer viewing their own order"
+    }
+  ],
+  "hints": [
+    "Look at where the id lands in the SQL. Is it inside quotes?",
+    "Escaping quotes only helps if the attacker needs a quote. Try writing an attack without one."
+  ],
+  "xp": {
+    "firstAttempt": 90,
+    "withHints": 45,
+    "retry": 30
+  }
+}

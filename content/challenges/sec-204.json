@@ -9,42 +9,51 @@
   "repo": "aurora-store",
   "file": "public/search-results.js",
   "reportedBy": "Dan (QA)",
-
   "masteryRequired": 0.45,
   "isDrill": false,
   "isBoss": false,
-  "requires": "sec-201",
-
+  "requires": "review-201",
   "brief": "The 'you searched for X' banner echoes the query back. Dan found that a crafted link sent to a signed-in customer runs code in their session -- no review needed, just a URL.",
-
   "vulnerable": "function showSearchBanner(term) {\n  const banner = document.querySelector('#search-banner');\n\n  banner.innerHTML = 'You searched for <strong>' + term + '</strong>';\n\n  banner.hidden = false;\n}",
-
   "meta": {
-    "inputNames": ["term"]
+    "inputNames": [
+      "term"
+    ]
   },
-
   "rules": [
     "xss.no-html-sink",
     "xss.uses-safe-sink",
     "output.reaches-the-page",
     "output.no-markup-stripping"
   ],
-
   "attackSuite": [
-    { "payload": "</strong><img src=x onerror=alert(1)>", "label": "Closes the tag, then opens its own" },
-    { "payload": "<iframe srcdoc=\"<script>alert(1)</script>\">", "label": "Nested context" }
+    {
+      "payload": "</strong><img src=x onerror=alert(1)>",
+      "label": "Closes the tag, then opens its own"
+    },
+    {
+      "payload": "<iframe srcdoc=\"<script>alert(1)</script>\">",
+      "label": "Nested context"
+    }
   ],
-
   "functionalSuite": [
-    { "value": "kettle & toaster", "label": "A search containing an ampersand" },
-    { "value": "size <10", "label": "A search containing an angle bracket" }
+    {
+      "value": "kettle & toaster",
+      "label": "A search containing an ampersand"
+    },
+    {
+      "value": "size <10",
+      "label": "A search containing an angle bracket"
+    }
   ],
-
   "hints": [
     "The bold tag is part of the design, so the whole banner cannot simply become text.",
     "Separate the parts you wrote from the part the customer typed. Only one of them should be markup.",
     "Build the <strong> element yourself and set its textContent to the term."
   ],
-
-  "xp": { "firstAttempt": 120, "withHints": 60, "retry": 40 }
+  "xp": {
+    "firstAttempt": 120,
+    "withHints": 60,
+    "retry": 40
+  }
 }

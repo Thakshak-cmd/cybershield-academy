@@ -1,0 +1,67 @@
+{
+  "id": "review-301",
+  "title": "Marcus added a token check to the payout endpoint",
+  "skill": "csrf",
+  "subSkill": "csrf.token",
+  "tier": "intermediate",
+  "format": "review",
+  "validator": "review",
+  "repo": "aurora-store",
+  "file": "routes/account.js",
+  "reportedBy": "Marcus (Incident Response)",
+  "masteryRequired": 0.3,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": "sec-301",
+  "brief": "After the breach, Marcus has patched the payout endpoint himself and wants it merged tonight. It looks like the fix you wrote earlier. Read it as if the attacker were reading it too.",
+  "vulnerable": "app.post('/api/account/payout', async (req, res) => {\n  const { sortCode, accountNumber } = req.body;\n  await updatePayout(req.session.userId, { sortCode, accountNumber });\n  res.json({ ok: true });\n});",
+  "proposed": "app.post('/api/account/payout', async (req, res) => {\n  const { sortCode, accountNumber, csrfToken } = req.body;\n  if (csrfToken && csrfToken !== req.session.csrfToken) {\n    return res.status(403).json({ error: 'Invalid request token.' });\n  }\n  await updatePayout(req.session.userId, { sortCode, accountNumber });\n  res.json({ ok: true });\n});",
+  "prAuthor": "Marcus (Incident Response)",
+  "sound": false,
+  "reasons": [
+    {
+      "id": "missing",
+      "text": "A request that leaves the token out skips the check entirely."
+    },
+    {
+      "id": "timing",
+      "text": "!== is not a constant-time comparison, so the token can be guessed by timing."
+    },
+    {
+      "id": "referer",
+      "text": "It should also check the Referer header."
+    },
+    {
+      "id": "header",
+      "text": "The token belongs in a header, not the request body."
+    }
+  ],
+  "correctReason": "missing",
+  "reasonExplanations": {
+    "timing": "a fair point for secrets checked millions of times, but irrelevant here: the attacker does not need to guess the token when leaving it out works",
+    "referer": "Referer can be absent for legitimate users; adding it would not fix the hole that is already there",
+    "header": "either place works, since another site's form cannot read the token in the first place",
+    "missing": "this patch is not correct -- a forged form simply omits csrfToken"
+  },
+  "attackSuite": [
+    {
+      "payload": "A forged form with no csrfToken field at all",
+      "label": "Walks straight past the check"
+    }
+  ],
+  "functionalSuite": [
+    {
+      "value": "The account page's own form, carrying its token",
+      "label": "Still accepted"
+    }
+  ],
+  "hints": [
+    "Trace the if statement when csrfToken is undefined. Which branch runs?",
+    "A check that only runs when the attacker volunteers the evidence is not a check."
+  ],
+  "xp": {
+    "firstAttempt": 90,
+    "withHints": 45,
+    "retry": 30
+  }
+}

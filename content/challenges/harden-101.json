@@ -1,0 +1,54 @@
+{
+  "id": "harden-101",
+  "title": "The shop's database account can drop every table",
+  "skill": "sqli",
+  "subSkill": "sqli.least-privilege",
+  "tier": "intermediate",
+  "format": "harden",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "file": "db/setup.js",
+  "reportedBy": "Marcus (Incident Response)",
+  "masteryRequired": 0.45,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": "review-101",
+  "brief": "Every injection you have closed so far was dangerous for one reason: whatever the attacker managed to run, it ran as an account that could do anything. The next injection nobody has found yet will be too. Limit what the account can do, so the damage is bounded even when the query is not.",
+  "vulnerable": "async function setupAppUser(db) {\n  await db.query(\"CREATE USER IF NOT EXISTS 'aurora_app'@'%'\");\n  await db.query(\"GRANT ALL PRIVILEGES ON aurora.* TO 'aurora_app'@'%'\");\n}",
+  "meta": {},
+  "rules": [
+    "sql.no-blanket-grant",
+    "sql.app-can-read",
+    "sql.app-can-write"
+  ],
+  "attackSuite": [
+    {
+      "payload": "'; DROP TABLE orders; --",
+      "label": "Destroys the order history"
+    },
+    {
+      "payload": "' UNION SELECT user, authentication_string FROM mysql.user --",
+      "label": "Reads the database's own credentials"
+    }
+  ],
+  "functionalSuite": [
+    {
+      "value": "Browsing the catalogue",
+      "label": "Needs to read products"
+    },
+    {
+      "value": "Placing an order",
+      "label": "Needs to write to orders"
+    }
+  ],
+  "hints": [
+    "This is not a fix for any single query. It limits what every query can do, including ones nobody has written yet.",
+    "Ask what the storefront actually does to the database. It reads the catalogue and it records orders. Does it ever drop a table?",
+    "Grant SELECT on products and SELECT, INSERT on orders -- and nothing more."
+  ],
+  "xp": {
+    "firstAttempt": 110,
+    "withHints": 55,
+    "retry": 35
+  }
+}

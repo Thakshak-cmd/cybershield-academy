@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { validate, validateStages, validateSpot, RULES } from "../src/index.js";
+import { validate, validateStages, validateSpot, validateReview, RULES } from "../src/index.js";
 import { REFERENCE_PATCHES, BOSS_REFERENCE_PATCHES } from "../../../content/reference-patches.js";
 
 /**
@@ -24,9 +24,10 @@ const all = readdirSync(CONTENT)
 
 // Three shapes of challenge, each with its own assertions. Splitting here rather
 // than special-casing inside each test.
-const challenges = all.filter(c => !c.stages && c.format !== "spot");
+const challenges = all.filter(c => !c.stages && c.format !== "spot" && c.format !== "review");
 const bosses = all.filter(c => c.stages);
 const spots = all.filter(c => c.format === "spot");
+const reviews = all.filter(c => c.format === "review");
 
 const PRIOR_MASTERY = 0.15;
 
@@ -308,6 +309,54 @@ describe("spot-the-flaw challenges", () => {
         // click, which is not what "cleared" should mean.
         assert.equal(c.isDrill, true, `${c.id} should be a drill`);
         assert.ok(!all.some(o => o.requires === c.id), `${c.id} is a prerequisite for something`);
+      });
+    });
+  }
+});
+
+
+describe("review-the-fix challenges", () => {
+  test("there is one per skill, and at least one sound fix", () => {
+    // If every proposal were wrong, "reject" would become the reflex rather than
+    // the judgement. At least one has to deserve approval.
+    assert.equal(new Set(reviews.map(r => r.skill)).size, 3);
+    assert.ok(reviews.some(r => r.sound), "every review is a rejection");
+  });
+
+  for (const c of reviews) {
+    describe(c.id, () => {
+      test("carries a proposal that differs from the original", () => {
+        assert.ok(c.proposed && c.vulnerable && c.proposed !== c.vulnerable);
+      });
+
+      test("an unsound proposal names a correct reason that exists", () => {
+        if (c.sound) return;
+        assert.ok(c.reasons.some(r => r.id === c.correctReason),
+          `${c.id} correctReason ${c.correctReason} is not among its reasons`);
+      });
+
+      test("every wrong reason says why it is wrong", () => {
+        // Otherwise a learner who picks it is told "no" and nothing else.
+        for (const r of c.reasons) {
+          if (!c.sound && r.id === c.correctReason) continue;
+          assert.ok(c.reasonExplanations?.[r.id], `${c.id}: no explanation for "${r.id}"`);
+        }
+      });
+
+      test("exactly one answer passes, and every other fails", () => {
+        const answers = [{ decision: "approve" }, ...c.reasons.map(r => ({ decision: "reject", reason: r.id }))];
+        const passing = answers.filter(a => validateReview(c, a).passed);
+        assert.equal(passing.length, 1, `${c.id} has ${passing.length} passing answers`);
+      });
+
+      test("the proposal is judged by the same rules as a patch would be", () => {
+        // For a review of a patch challenge's code, the proposal's soundness should
+        // agree with what the validator says about it. This keeps the review
+        // answers honest rather than resting on the author's say-so.
+        const twin = challenges.find(p => p.skill === c.skill && p.format !== "harden"
+          && p.rules?.some(r => r.startsWith(c.skill) || r.startsWith("csrf") || r.startsWith("xss")));
+        if (!twin || c.id !== "review-201") return;
+        assert.equal(validate(twin, c.proposed).passed, c.sound);
       });
     });
   }

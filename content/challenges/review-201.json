@@ -1,0 +1,61 @@
+{
+  "id": "review-201",
+  "title": "Priya's fix for the review renderer",
+  "skill": "xss",
+  "subSkill": "xss.output-encoding",
+  "tier": "beginner",
+  "format": "review",
+  "validator": "review",
+  "repo": "aurora-store",
+  "file": "public/reviews.js",
+  "reportedBy": "Priya (Support)",
+  "masteryRequired": 0.3,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": "sec-201",
+  "brief": "Priya has been learning alongside you and sent her first security fix for review. Her description: \"Swapped innerHTML for textContent. I think that's it?\" Be as honest in your review as you would want someone to be in theirs.",
+  "vulnerable": "function renderReview(review) {\n  const body = document.createElement('p');\n  body.innerHTML = review.body;\n  document.querySelector('#reviews').append(body);\n}",
+  "proposed": "function renderReview(review) {\n  const body = document.createElement('p');\n  body.textContent = review.body;\n  document.querySelector('#reviews').append(body);\n}",
+  "prAuthor": "Priya (Support)",
+  "sound": true,
+  "reasons": [
+    {
+      "id": "encode",
+      "text": "It should HTML-encode the body instead of using textContent."
+    },
+    {
+      "id": "script",
+      "text": "It does not strip <script> tags out of the review."
+    },
+    {
+      "id": "formatting",
+      "text": "Reviews with bold text or links will lose their formatting."
+    }
+  ],
+  "reasonExplanations": {
+    "encode": "textContent already does what encoding is for -- the browser never parses the text as markup",
+    "script": "nothing needs stripping when nothing is parsed; a <script> tag in textContent is just characters on screen",
+    "formatting": "Aurora's reviews are plain text by design, so there is no formatting to lose -- that is a product question, not a security one"
+  },
+  "attackSuite": [
+    {
+      "payload": "<img src=x onerror=alert(1)>",
+      "label": "Rendered as text, never run"
+    }
+  ],
+  "functionalSuite": [
+    {
+      "value": "Great kettle & fast delivery",
+      "label": "Displays exactly as written"
+    }
+  ],
+  "hints": [
+    "Ask what the browser does with a string given to textContent. Does it ever look inside it for tags?",
+    "Not every review needs changes requested. Sometimes the fix is simply right."
+  ],
+  "xp": {
+    "firstAttempt": 70,
+    "withHints": 35,
+    "retry": 25
+  }
+}

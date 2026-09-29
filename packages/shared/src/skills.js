@@ -33,7 +33,7 @@ export const TIERS = /** @type {const} */ (["beginner", "intermediate", "advance
  * analysis; only the advanced tier executes code in a container.
  * See docs/deviations-from-proposal.md D2 for why this is tiered.
  */
-export const VALIDATORS = /** @type {const} */ (["ast-diff", "rule-set", "container-exec", "spot"]);
+export const VALIDATORS = /** @type {const} */ (["ast-diff", "rule-set", "container-exec", "spot", "review"]);
 
 /** @typedef {(typeof VALIDATORS)[number]} Validator */
 

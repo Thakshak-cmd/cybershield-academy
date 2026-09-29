@@ -165,6 +165,200 @@ export const REFERENCE_PATCHES = {
     }
   ],
 
+  "harden-101": [
+    {
+      label: "grant only what the storefront uses",
+      expect: "pass",
+      source: `async function setupAppUser(db) {
+  await db.query("CREATE USER IF NOT EXISTS 'aurora_app'@'%'");
+  await db.query("GRANT SELECT ON aurora.products TO 'aurora_app'@'%'");
+  await db.query("GRANT SELECT, INSERT ON aurora.orders TO 'aurora_app'@'%'");
+}`
+    },
+    {
+      label: "revoke everything",
+      // Safe and useless: the shop cannot read its own catalogue.
+      expect: ["sql.app-can-read", "sql.app-can-write"],
+      source: `async function setupAppUser(db) {
+  await db.query("CREATE USER IF NOT EXISTS 'aurora_app'@'%'");
+  await db.query("REVOKE ALL PRIVILEGES ON aurora.* FROM 'aurora_app'@'%'");
+}`
+    },
+    {
+      label: "read-only",
+      // Closer, but checkout needs to write an order.
+      expect: ["sql.app-can-write"],
+      source: `async function setupAppUser(db) {
+  await db.query("GRANT SELECT ON aurora.* TO 'aurora_app'@'%'");
+}`
+    }
+  ],
+
+  "harden-201": [
+    {
+      label: "keep 'self', drop the unsafe sources",
+      expect: "pass",
+      source: `app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "https://cdn.aurora.shop"]
+    }
+  }
+}));`
+    },
+    {
+      label: "switch the policy off",
+      expect: ["csp.enabled"],
+      source: `app.use(helmet({ contentSecurityPolicy: false }));`
+    },
+    {
+      label: "block every script",
+      expect: ["csp.allows-own-scripts"],
+      source: `app.use(helmet({
+  contentSecurityPolicy: {
+    directives: { defaultSrc: ["'self'"], scriptSrc: ["'none'"] }
+  }
+}));`
+    },
+    {
+      label: "remove only the wildcard",
+      // 'unsafe-inline' alone is enough to run an injected <script>.
+      expect: ["csp.no-unsafe-sources"],
+      source: `app.use(helmet({
+  contentSecurityPolicy: {
+    directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'", "'unsafe-inline'"] }
+  }
+}));`
+    }
+  ],
+
+  "harden-301": [
+    {
+      label: "lax and httpOnly",
+      expect: "pass",
+      source: `app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 8 }
+}));`
+    },
+    {
+      label: "strict",
+      // Blocks the forgery and signs out everyone arriving from an email link.
+      expect: ["cookie.survives-email-links"],
+      source: `app.use(session({
+  secret: process.env.SESSION_SECRET,
+  cookie: { httpOnly: true, secure: true, sameSite: 'strict' }
+}));`
+    },
+    {
+      label: "fix SameSite, forget httpOnly",
+      expect: ["cookie.not-script-readable"],
+      source: `app.use(session({
+  secret: process.env.SESSION_SECRET,
+  cookie: { httpOnly: false, secure: true, sameSite: 'lax' }
+}));`
+    },
+    {
+      label: "fix httpOnly, forget SameSite",
+      expect: ["cookie.samesite-restricted"],
+      source: `app.use(session({
+  secret: process.env.SESSION_SECRET,
+  cookie: { httpOnly: true, secure: true, sameSite: 'none' }
+}));`
+    }
+  ],
+
+  "sec-107": [
+    {
+      label: "look the column up in a table",
+      expect: "pass",
+      source: `const SORTS = { price: 'price', name: 'name', newest: 'created_at' };
+app.get('/api/catalogue', async (req, res) => {
+  const { sort } = req.query;
+  const column = SORTS[sort] ?? 'name';
+  const sql = \`SELECT id, name, price FROM products ORDER BY \${column}\`;
+  const rows = await db.query(sql);
+  res.json(rows);
+});`
+    },
+    {
+      label: "check against a list, then use it",
+      expect: "pass",
+      source: `const ALLOWED = ['price', 'name'];
+app.get('/api/catalogue', async (req, res) => {
+  const { sort } = req.query;
+  const column = ALLOWED.includes(sort) ? sort : 'name';
+  const sql = \`SELECT id, name, price FROM products ORDER BY \${column}\`;
+  const rows = await db.query(sql);
+  res.json(rows);
+});`
+    },
+    {
+      label: "bind it as a parameter",
+      // What every earlier challenge taught -- and here it silently stops sorting.
+      expect: ["sql.sort-still-applies"],
+      source: `app.get('/api/catalogue', async (req, res) => {
+  const { sort } = req.query;
+  const sql = 'SELECT id, name, price FROM products ORDER BY ?';
+  const rows = await db.query(sql, [sort]);
+  res.json(rows);
+});`
+    },
+    {
+      label: "strip anything that is not a letter",
+      // Keeps the sort working and still lets password_hash through.
+      expect: ["sqli.identifier-allowlisted"],
+      source: `app.get('/api/catalogue', async (req, res) => {
+  const { sort } = req.query;
+  const clean = sort.replace(/[^a-z_]/gi, '');
+  const sql = \`SELECT id, name, price FROM products ORDER BY \${clean}\`;
+  const rows = await db.query(sql);
+  res.json(rows);
+});`
+    }
+  ],
+
+  "sec-205": [
+    {
+      label: "parse it and allow only web schemes",
+      expect: "pass",
+      source: `function renderSeller(seller) {
+  const link = document.createElement('a');
+  link.textContent = seller.name;
+  const url = new URL(seller.website, location.origin);
+  if (url.protocol === 'https:' || url.protocol === 'http:') {
+    link.href = url.href;
+  }
+  document.querySelector('#seller').append(link);
+}`
+    },
+    {
+      label: "block javascript:",
+      expect: ["xss.url-scheme-allowlisted"],
+      source: `function renderSeller(seller) {
+  const link = document.createElement('a');
+  link.textContent = seller.name;
+  if (!seller.website.includes('javascript:')) {
+    link.href = seller.website;
+  }
+  document.querySelector('#seller').append(link);
+}`
+    },
+    {
+      label: "stop linking",
+      expect: ["output.link-still-works"],
+      source: `function renderSeller(seller) {
+  const link = document.createElement('a');
+  link.textContent = seller.name;
+  document.querySelector('#seller').append(link);
+}`
+    }
+  ],
+
   "sec-301": [
     {
       label: "compare a request token against the session",

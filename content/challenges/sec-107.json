@@ -1,0 +1,60 @@
+{
+  "id": "sec-107",
+  "title": "The sort dropdown takes whatever column you give it",
+  "skill": "sqli",
+  "subSkill": "sqli.input-validation",
+  "tier": "advanced",
+  "format": "patch",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "file": "routes/catalogue.js",
+  "reportedBy": "Dan (QA)",
+  "masteryRequired": 0.6,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": "harden-101",
+  "brief": "The catalogue sorts by whatever the dropdown sends. Dan edited the URL and sorted by a column that should not exist in this query. The fix you have used every time so far will not work here -- find out why before you reach for it.",
+  "vulnerable": "app.get('/api/catalogue', async (req, res) => {\n  const { sort } = req.query;\n\n  const sql = `SELECT id, name, price FROM products\n     ORDER BY ${sort}`;\n\n  const rows = await db.query(sql);\n  res.json(rows);\n});",
+  "meta": {
+    "dbMethod": "query",
+    "inputNames": [
+      "sort"
+    ],
+    "expectedTable": "products"
+  },
+  "rules": [
+    "sqli.identifier-allowlisted",
+    "sql.sort-still-applies",
+    "sql.queries-expected-table"
+  ],
+  "attackSuite": [
+    {
+      "payload": "(CASE WHEN (SELECT substr(password_hash,1,1) FROM users LIMIT 1)='a' THEN name ELSE price END)",
+      "label": "Reads a hash one character at a time"
+    },
+    {
+      "payload": "price; DROP TABLE products",
+      "label": "Stacked statement"
+    }
+  ],
+  "functionalSuite": [
+    {
+      "value": "sort=price",
+      "label": "Cheapest first"
+    },
+    {
+      "value": "sort=name",
+      "label": "Alphabetical"
+    }
+  ],
+  "hints": [
+    "Try ORDER BY ? in your head. What does the database receive in place of the question mark -- a column, or a piece of text?",
+    "A placeholder can only stand for a value. A column name is part of the statement's structure, so it has to come from somewhere you control.",
+    "Map the allowed choices to column names in an object, and look the request value up in it."
+  ],
+  "xp": {
+    "firstAttempt": 160,
+    "withHints": 80,
+    "retry": 50
+  }
+}

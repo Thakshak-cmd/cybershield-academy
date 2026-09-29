@@ -1,6 +1,7 @@
 import { findAll, isMethodCall, isInterpolated, looksLikeSql, staticText, identifiersIn,
          buildBindings, resolve, assignmentsTo, carriesAny, calledNames,
-         unescapedTaint } from "./ast.js";
+         unescapedTaint, objectProp, objectsWithKey, literalValue, arrayStrings,
+         allStrings } from "./ast.js";
 
 /**
  * A rule is a named, reusable structural check over a submission.
@@ -351,6 +352,354 @@ function memberPath(node) {
   if (cur && cur.type === "Identifier") parts.unshift(cur.name);
   return parts.join(".").toLowerCase();
 }
+
+/* --------------------------------------------------------- harden: cookies */
+
+/**
+ * Every set of cookie options in the file: the third argument to `res.cookie()`,
+ * and the `cookie` block of a session middleware's configuration.
+ */
+function cookieOptions(ast) {
+  const bindings = buildBindings(ast);
+  const out = [];
+  for (const call of findAll(ast, "CallExpression")) {
+    if (isMethodCall(call, "cookie") && call.arguments[2]) {
+      const opts = resolve(call.arguments[2], bindings);
+      if (opts.type === "ObjectExpression") out.push(opts);
+    }
+  }
+  for (const obj of objectsWithKey(ast, "cookie")) {
+    const opts = resolve(objectProp(obj, "cookie"), bindings);
+    if (opts && opts.type === "ObjectExpression") out.push(opts);
+  }
+  return out;
+}
+
+/** SameSite as a normalised string: "lax", "strict", "none", or "" when unset. */
+function sameSiteOf(opts) {
+  const v = literalValue(objectProp(opts, "sameSite"));
+  if (v === true) return "strict";        // express treats `true` as Strict
+  if (typeof v === "string") return v.toLowerCase();
+  return "";
+}
+
+Object.assign(RULES, {
+  "cookie.samesite-restricted": {
+    kind: "security",
+    describe: "The session cookie is not sent on requests started by other sites",
+    check({ ast }) {
+      for (const opts of cookieOptions(ast)) {
+        const s = sameSiteOf(opts);
+        if (s === "none") {
+          return { pass: false, evidence: `SameSite=None at line ${opts.loc.start.line} sends the cookie on cross-site requests, which is exactly what a forged request needs` };
+        }
+        if (s === "") {
+          return { pass: false, evidence: `no SameSite at line ${opts.loc.start.line}, so the behaviour depends on each browser's default rather than on you` };
+        }
+      }
+      return { pass: true };
+    }
+  },
+
+  "cookie.not-script-readable": {
+    kind: "security",
+    describe: "Page scripts cannot read the session cookie",
+    check({ ast }) {
+      for (const opts of cookieOptions(ast)) {
+        if (literalValue(objectProp(opts, "httpOnly")) !== true) {
+          return { pass: false, evidence: `without httpOnly (line ${opts.loc.start.line}), any script in the page -- including an injected one -- can read the session` };
+        }
+      }
+      return { pass: true };
+    }
+  },
+
+  "cookie.still-issued": {
+    kind: "functional",
+    describe: "Customers can still stay signed in",
+    check({ ast }) {
+      return cookieOptions(ast).length
+        ? { pass: true }
+        : { pass: false, evidence: "no session cookie is set any more, so nobody can stay signed in" };
+    }
+  },
+
+  "cookie.survives-email-links": {
+    kind: "functional",
+    describe: "A customer following a link from their email arrives signed in",
+    check({ ast }) {
+      for (const opts of cookieOptions(ast)) {
+        if (sameSiteOf(opts) === "strict") {
+          return { pass: false, evidence: "SameSite=Strict drops the cookie when a customer follows a link from their order email, so they arrive signed out" };
+        }
+      }
+      return { pass: true };
+    }
+  }
+});
+
+/* ------------------------------------------------------------- harden: CSP */
+
+const UNSAFE_SOURCES = ["'unsafe-inline'", "'unsafe-eval'", "*", "data:"];
+
+/** Script sources from a helmet-style `directives` object, falling back to default-src. */
+function scriptSources(ast) {
+  const bindings = buildBindings(ast);
+  const out = [];
+  for (const obj of objectsWithKey(ast, "directives")) {
+    const d = resolve(objectProp(obj, "directives"), bindings);
+    if (!d || d.type !== "ObjectExpression") continue;
+    const src = objectProp(d, "scriptSrc") ?? objectProp(d, "script-src")
+             ?? objectProp(d, "defaultSrc") ?? objectProp(d, "default-src");
+    if (src) out.push({ sources: arrayStrings(resolve(src, bindings)), node: src });
+  }
+  return out;
+}
+
+Object.assign(RULES, {
+  "csp.enabled": {
+    kind: "security",
+    describe: "A Content-Security-Policy is sent",
+    check({ ast }) {
+      for (const obj of objectsWithKey(ast, "contentSecurityPolicy")) {
+        if (literalValue(objectProp(obj, "contentSecurityPolicy")) === false) {
+          return { pass: false, evidence: `the policy is switched off entirely at line ${obj.loc.start.line}` };
+        }
+      }
+      return scriptSources(ast).length
+        ? { pass: true }
+        : { pass: false, evidence: "no script-src or default-src is declared, so nothing restricts where scripts come from" };
+    }
+  },
+
+  "csp.no-unsafe-sources": {
+    kind: "security",
+    describe: "The policy does not wave through the scripts it exists to stop",
+    check({ ast }) {
+      for (const { sources, node } of scriptSources(ast)) {
+        const bad = sources.filter(s => UNSAFE_SOURCES.includes(s));
+        if (bad.length) {
+          return { pass: false, evidence: `${bad.join(" and ")} at line ${node.loc.start.line} lets injected script run, which undoes the policy for exactly the attack it is for` };
+        }
+      }
+      return { pass: true };
+    }
+  },
+
+  "csp.allows-own-scripts": {
+    kind: "functional",
+    describe: "Aurora's own scripts still load",
+    check({ ast }) {
+      for (const { sources, node } of scriptSources(ast)) {
+        const ownOk = sources.some(s => s === "'self'" || s.startsWith("'nonce-") || s === "'strict-dynamic'");
+        if (!ownOk) {
+          return { pass: false, evidence: `script-src at line ${node.loc.start.line} blocks Aurora's own scripts too -- the storefront stops working` };
+        }
+      }
+      return { pass: true };
+    }
+  }
+});
+
+/* ----------------------------------------------------------- harden: grants */
+
+const BLANKET = /GRANT\s+ALL|ALL\s+PRIVILEGES|\bSUPER\b|WITH\s+GRANT\s+OPTION|ON\s+\*\.\*/i;
+
+function grants(ast) {
+  return allStrings(ast).filter(s => /\bGRANT\b/i.test(s.text));
+}
+
+Object.assign(RULES, {
+  "sql.no-blanket-grant": {
+    kind: "security",
+    describe: "The application's database account can only do what the application does",
+    check({ ast }) {
+      const blanket = grants(ast).find(g => BLANKET.test(g.text));
+      return blanket
+        ? { pass: false, evidence: `line ${blanket.node.loc.start.line} gives the app account every privilege, so a single injection can do anything the database can` }
+        : { pass: true };
+    }
+  },
+
+  // Two rules rather than one "grants what the app needs": revoking everything
+  // and granting read-only would otherwise fail identically, and the learner
+  // could not tell which mistake they had made.
+  "sql.app-can-read": privilegeRule("SELECT",
+    "The storefront can still read its catalogue",
+    "without SELECT, the storefront cannot show its own products"),
+
+  "sql.app-can-write": privilegeRule("INSERT",
+    "Checkout can still record an order",
+    "without INSERT, checkout cannot record an order")
+});
+
+function privilegeRule(privilege, describe, consequence) {
+  return {
+    kind: "functional",
+    describe,
+    check({ ast }) {
+      const all = grants(ast);
+      const blanket = all.some(g => BLANKET.test(g.text));
+      const has = blanket || all.some(g => new RegExp(`\\b${privilege}\\b`, "i").test(g.text));
+      return has ? { pass: true } : { pass: false, evidence: consequence };
+    }
+  };
+}
+
+/* -------------------------------------------------- sqli: identifiers */
+
+/**
+ * Does a request value reach this expression without being vetted?
+ *
+ * Vetted means checked against a list the author wrote: `COLUMNS[sort]` where
+ * COLUMNS is an object literal, or `ALLOWED.includes(sort) ? sort : 'name'`.
+ * This is the only way to put an identifier into SQL safely, because a column
+ * name cannot be a bound parameter -- `ORDER BY ?` binds a string value, and
+ * every row sorts by the same constant.
+ */
+function unvettedTaint(node, names, bindings, depth = 0) {
+  if (!node || depth > 8) return false;
+  switch (node.type) {
+    case "Identifier": {
+      if (names.includes(node.name)) return true;
+      const bound = bindings.get(node.name);
+      return bound ? unvettedTaint(bound, names, bindings, depth + 1) : false;
+    }
+    case "MemberExpression": {
+      // A lookup into a table the author wrote returns one of the author's values.
+      if (node.computed && resolve(node.object, bindings)?.type === "ObjectExpression") return false;
+      if (!node.computed && node.property.type === "Identifier" && names.includes(node.property.name)) return true;
+      return unvettedTaint(node.object, names, bindings, depth + 1);
+    }
+    case "ConditionalExpression": {
+      if (isAllowlistTest(node.test, bindings)) {
+        // Both branches are either literals or the value the test just vetted.
+        return [node.consequent, node.alternate].some(b =>
+          b.type !== "Literal" && !identifiersIn(node.test).has(b.name ?? "") &&
+          unvettedTaint(b, names, bindings, depth + 1));
+      }
+      return [node.consequent, node.alternate].some(b => unvettedTaint(b, names, bindings, depth + 1));
+    }
+    case "LogicalExpression":
+    case "BinaryExpression":
+      return unvettedTaint(node.left, names, bindings, depth + 1)
+          || unvettedTaint(node.right, names, bindings, depth + 1);
+    case "TemplateLiteral":
+      return node.expressions.some(e => unvettedTaint(e, names, bindings, depth + 1));
+    case "CallExpression": {
+      const viaReceiver = node.callee.type === "MemberExpression"
+        && unvettedTaint(node.callee.object, names, bindings, depth + 1);
+      return viaReceiver || node.arguments.some(a => unvettedTaint(a, names, bindings, depth + 1));
+    }
+    default:
+      return false;
+  }
+}
+
+/** `LIST.includes(x)`, `x === 'lit'`, or `x in TABLE` / `Object.hasOwn(TABLE, x)`. */
+function isAllowlistTest(test, bindings) {
+  if (!test) return false;
+  if (test.type === "CallExpression" && isMethodCall(test, "includes")) {
+    return resolve(test.callee.object, bindings)?.type === "ArrayExpression";
+  }
+  if (test.type === "CallExpression" && isMethodCall(test, "hasOwn")) return true;
+  if (test.type === "BinaryExpression" && ["===", "=="].includes(test.operator)) {
+    return test.left.type === "Literal" || test.right.type === "Literal";
+  }
+  if (test.type === "BinaryExpression" && test.operator === "in") {
+    return resolve(test.right, bindings)?.type === "ObjectExpression";
+  }
+  if (test.type === "LogicalExpression") {
+    return isAllowlistTest(test.left, bindings) && isAllowlistTest(test.right, bindings);
+  }
+  return false;
+}
+
+Object.assign(RULES, {
+  "sqli.identifier-allowlisted": {
+    kind: "security",
+    describe: "A column name from the request only reaches SQL after matching a list you control",
+    check({ ast, meta }) {
+      const bindings = buildBindings(ast);
+      for (const { sql } of sqlArguments(ast, meta.dbMethod)) {
+        if (!looksLikeSql(sql)) continue;
+        const spliced = isInterpolated(sql) || (sql.type === "BinaryExpression" && sql.operator === "+");
+        if (spliced && unvettedTaint(sql, meta.inputNames || [], bindings)) {
+          return { pass: false, evidence: `a value from the request is spliced into the statement at line ${sql.loc.start.line} without being checked against the columns you allow` };
+        }
+      }
+      return { pass: true };
+    }
+  },
+
+  "sql.sort-still-applies": {
+    kind: "functional",
+    describe: "Sorting still sorts",
+    check({ ast, meta }) {
+      for (const { sql } of sqlArguments(ast, meta.dbMethod)) {
+        const text = staticText(sql);
+        if (/ORDER\s+BY\s*(\?|\$\d)/i.test(text)) {
+          return { pass: false, evidence: "ORDER BY ? binds the column name as a string value, so every row sorts by the same constant and the sort does nothing" };
+        }
+        if (/ORDER\s+BY/i.test(text)) return { pass: true };
+      }
+      return { pass: false, evidence: "the query no longer sorts at all" };
+    }
+  }
+});
+
+/* -------------------------------------------------------- xss: URL schemes */
+
+const URL_SINK_PROPS = ["href", "src", "action", "formAction"];
+
+Object.assign(RULES, {
+  "xss.url-scheme-allowlisted": {
+    kind: "security",
+    describe: "A link from user content can only be http or https",
+    check({ ast, meta }) {
+      const bindings = buildBindings(ast);
+      const names = meta.inputNames || [];
+      const reaches =
+        URL_SINK_PROPS.some(p => assignmentsTo(ast, p).some(a => carriesAny(a.right, names, bindings))) ||
+        findAll(ast, "CallExpression").some(c =>
+          isMethodCall(c, "setAttribute") &&
+          URL_SINK_PROPS.includes(String(literalValue(c.arguments[0]))) &&
+          carriesAny(c.arguments[1], names, bindings));
+      if (!reaches) return { pass: true };
+
+      const strings = allStrings(ast).map(s => s.text.trim().toLowerCase());
+      const regexes = findAll(ast, "Literal").filter(l => l.regex).map(l => l.regex.pattern);
+      const allowlisted =
+        strings.some(t => /^https?:(\/\/)?$/.test(t)) ||
+        regexes.some(r => /\^\(?https\??/.test(r) || /\^https/.test(r));
+      if (allowlisted) return { pass: true };
+
+      const blocklisted = strings.some(t => t.includes("javascript"));
+      return {
+        pass: false,
+        evidence: blocklisted
+          ? "blocking the word javascript misses JaVaScRiPt:, java\\tscript: and data: -- list the schemes you allow, not the ones you fear"
+          : "a link can be javascript:..., and clicking it runs the attacker's code with the customer's session"
+      };
+    }
+  },
+
+  "output.link-still-works": {
+    kind: "functional",
+    describe: "The seller's website is still a working link",
+    check({ ast, meta }) {
+      const bindings = buildBindings(ast);
+      const names = meta.inputNames || [];
+      const linked =
+        URL_SINK_PROPS.some(p => assignmentsTo(ast, p).some(a => carriesAny(a.right, names, bindings))) ||
+        findAll(ast, "CallExpression").some(c =>
+          isMethodCall(c, "setAttribute") && carriesAny(c.arguments[1], names, bindings));
+      return linked
+        ? { pass: true }
+        : { pass: false, evidence: "the website is no longer linked -- the feature is gone, not fixed" };
+    }
+  }
+});
 
 export function getRule(id) {
   const rule = RULES[id];

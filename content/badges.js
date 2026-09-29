@@ -17,7 +17,7 @@
  * @typedef {object} EarnedState
  * @property {string[]} cleared            challenge ids cleared
  * @property {Record<string, number>} mastery
- * @property {{ id: string, skill: string, isBoss?: boolean }[]} catalogue
+ * @property {{ id: string, skill: string, isBoss?: boolean, isDrill?: boolean }[]} catalogue
  * @property {number} unaidedFirstAttempts  solves with no hints, first try
  */
 
@@ -31,9 +31,15 @@
  * @property {(state: EarnedState) => boolean} earned
  */
 
-/** Every non-boss challenge in a skill, cleared. */
+/**
+ * Every real challenge in a skill, cleared.
+ *
+ * Drills are excluded. They are repeatable practice, and "every forgery challenge
+ * cleared" should mean the learner closed every hole, not that they also pointed
+ * at every line in every warm-up.
+ */
 const clearedWholeSkill = skill => (/** @type {EarnedState} */ state) => {
-  const inSkill = state.catalogue.filter(c => c.skill === skill && !c.isBoss);
+  const inSkill = state.catalogue.filter(c => c.skill === skill && !c.isBoss && !c.isDrill);
   return inSkill.length > 0 && inSkill.every(c => state.cleared.includes(c.id));
 };
 
@@ -44,7 +50,9 @@ export const BADGES = [
     name: "First Patch",
     description: "Closed your first hole.",
     art: "patch",
-    earned: s => s.cleared.length >= 1
+    // A real challenge, not a drill: pointing at a line is spotting a hole, not
+    // closing one, and the badge says the latter.
+    earned: s => s.catalogue.some(c => !c.isDrill && !c.isBoss && s.cleared.includes(c.id))
   },
   {
     id: "sqli-defender",

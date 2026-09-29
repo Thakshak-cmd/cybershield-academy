@@ -216,3 +216,51 @@ export function unescapedTaint(node, names, bindings, isEscaper, depth = 0) {
 
   return false;
 }
+
+/** Key name of an object property, whether written `a: 1` or `"a": 1`. */
+export function propKey(prop) {
+  if (prop.type !== "Property") return null;
+  if (prop.key.type === "Identifier") return prop.key.name;
+  if (prop.key.type === "Literal") return String(prop.key.value);
+  return null;
+}
+
+/** The value node for `key` in an object literal, or null. */
+export function objectProp(obj, key) {
+  if (!obj || obj.type !== "ObjectExpression") return null;
+  const found = obj.properties.find(p => propKey(p) === key);
+  return found ? found.value : null;
+}
+
+/** Every object literal in the file that declares `key`. */
+export function objectsWithKey(ast, key) {
+  return findAll(ast, "ObjectExpression").filter(o => objectProp(o, key) !== null);
+}
+
+/** A literal's value, or undefined for anything that is not a plain literal. */
+export function literalValue(node) {
+  if (!node) return undefined;
+  if (node.type === "Literal") return node.value;
+  if (node.type === "TemplateLiteral" && node.expressions.length === 0) {
+    return node.quasis[0].value.cooked;
+  }
+  return undefined;
+}
+
+/** The string members of an array literal. Non-literal members are skipped. */
+export function arrayStrings(node) {
+  if (!node || node.type !== "ArrayExpression") return [];
+  return node.elements.map(literalValue).filter(v => typeof v === "string");
+}
+
+/** Every string the file contains, template quasis included. */
+export function allStrings(ast) {
+  const out = [];
+  for (const lit of findAll(ast, "Literal")) {
+    if (typeof lit.value === "string") out.push({ text: lit.value, node: lit });
+  }
+  for (const tpl of findAll(ast, "TemplateLiteral")) {
+    out.push({ text: tpl.quasis.map(q => q.value.cooked ?? "").join(" "), node: tpl });
+  }
+  return out;
+}
