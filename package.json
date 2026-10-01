@@ -26,7 +26,9 @@
     "ml:test": "services/ml/.venv/bin/python -m pytest services/ml -q",
     "web": "npm run dev --workspace @cybershield/web",
     "dev:api": "npm run dev:memory --workspace @cybershield/api",
-    "start": "node scripts/dev.mjs"
+    "start": "node scripts/dev.mjs",
+    "study:export": "node --env-file=.env.local scripts/study/export.mjs",
+    "study:withdraw": "node --env-file=.env.local scripts/study/withdraw.mjs"
   },
   "devDependencies": {
     "@types/express": "^4.17.25",

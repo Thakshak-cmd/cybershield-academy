@@ -153,4 +153,7 @@ D1 in particular changes the technical shape of the project after approval. It s
 be raised with the supervisor in writing and the response recorded here, so that the
 change is on record as agreed rather than unilateral.
 
-**Status:** Not yet raised. — pending
+**Status:** Raised by email on 1 Oct 2026, covering D1–D5, the tiered validation
+proposal (including dropping the container-based Advanced tier), and the addition of
+lessons. The email also asked the supervisor to confirm that no ethics amendment is
+needed. Awaiting reply; record the response and its date here when it arrives.
