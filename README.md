@@ -48,6 +48,28 @@ npm run dev:atlas   # the same three services, API on the real database
 Nothing is seeded automatically in this mode, so content cannot change under a
 study session. Your IP must be on the Atlas Network Access list.
 
+## Running the study
+
+Everything below works on the real database in `.env.local`, and writes only
+under `data/study/`, which is gitignored. Nothing in it may ever be committed.
+
+```
+npm run study:export                      # encrypted backup of the study data
+npm run study:withdraw -- --handle <h>    # show what a withdrawal would delete
+npm run study:withdraw -- --handle <h> --confirm
+npm run study:analyse -- data/study/exports/<file>.csx --outcomes data/study/outcomes.csv --test-max 10
+npm run study:rehearse                    # the whole pipeline on synthetic learners
+```
+
+- **Export** after every session, and keep the passphrase off this machine. It
+  asks for one, or reads `STUDY_EXPORT_PASSPHRASE` for a scheduled backup.
+- **Withdrawal** does nothing without `--confirm`, then deletes the account and
+  all of its data, and records the id so older backups are filtered too.
+- **Outcomes** (pre/post test, SUS) are collected outside the platform. Put them
+  in `data/study/outcomes.csv` as `code,pre,post,sus` or `code,pre,post,sus1,...,sus10`.
+- **Rehearse** before the study to see the report's shape. Its output is marked
+  SYNTHETIC and must not be reported.
+
 ## Verifying it
 
 ```
