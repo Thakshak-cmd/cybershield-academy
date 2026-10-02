@@ -28,6 +28,14 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
   const [busy, setBusy] = useState(false);
   const openedAt = useRef(Date.now());
   const top = useRef(/** @type {HTMLDivElement|null} */ (null));
+  const stage = useRef(/** @type {HTMLDivElement|null} */ (null));
+  const moved = useRef(false);
+
+  // The button that moved to the next step has gone with the step, so focus
+  // follows to the new one -- otherwise it falls back to the top of the page.
+  useEffect(() => {
+    if (moved.current) stage.current?.focus({ preventScroll: true });
+  }, [step]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +59,7 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
   const canFile = completed || (practiceDone && allAnswered);
 
   function go(i) {
+    moved.current = true;
     setStep(i);
     setReached(r => Math.max(r, i));
     top.current?.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -73,6 +82,7 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
   return (
     <div className="lesson" ref={top}>
       <Window
+        as="h1"
         title={`Briefing file · ${lesson.title}`}
         badge={<span className="label">{completed ? "filed · reread" : "required before your first ticket"}</span>}
       >
@@ -96,12 +106,13 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
         </nav>
       </Window>
 
+      <div ref={stage} tabIndex={-1} className="lesson__stage">
       {step === 0 && (
         <Window title="Theory">
           <div className="theory">
             {lesson.theory.map(section => (
               <section key={section.heading} className="theory__section">
-                <h2 className="theory__heading">{section.heading}</h2>
+                <h3 className="theory__heading">{section.heading}</h3>
                 {section.paragraphs.map((p, i) => <p key={i} className="theory__p">{p}</p>)}
                 {section.code && <pre className="theory__code">{section.code}</pre>}
               </section>
@@ -154,6 +165,7 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
           </div>
         </Window>
       )}
+      </div>
     </div>
   );
 }
@@ -222,6 +234,8 @@ function Guided({ lesson, done, onDone, onNext }) {
         rows={Math.max(8, source.split("\n").length + 1)}
       />
 
+      {/* One region that is always present, so each new result is announced. */}
+      <div aria-live="polite">
       {verdict?.passed && (
         <p className="guided__result guided__result--good">
           That holds. Both suites pass: the attack is stopped and the route still does its job.
@@ -239,8 +253,9 @@ function Guided({ lesson, done, onDone, onNext }) {
         <ul className="rules guided__fails">
           {failures.map(r => (
             <li key={r.id} className="rule rule--fail">
-              <span className="rule__mark">✕</span>
+              <span className="rule__mark" aria-hidden="true">✕</span>
               <span>
+                <span className="visually-hidden">Failed: </span>
                 <span className="rule__id">{r.describe ?? r.id}</span>
                 {r.evidence && <span className="rule__why">{r.evidence}</span>}
               </span>
@@ -248,7 +263,8 @@ function Guided({ lesson, done, onDone, onNext }) {
           ))}
         </ul>
       )}
-      {error && <p className="lesson__error">{error}</p>}
+      </div>
+      {error && <p className="lesson__error" role="alert">{error}</p>}
 
       <div className="guided__actions">
         {!done && (
@@ -261,7 +277,7 @@ function Guided({ lesson, done, onDone, onNext }) {
             <span className="cmd__caret">▸</span> Show me
           </button>
         )}
-        {done && <Next onClick={onNext}>On to the check</Next>}
+        {done && <Next onClick={onNext} autoFocus>On to the check</Next>}
       </div>
     </Window>
   );
@@ -281,7 +297,9 @@ function Question({ lessonId, question, result, onAnswered }) {
   }
 
   return (
-    <fieldset className="question" disabled={!!result || busy}>
+    // Not disabled once answered: disabling the button that has focus throws a
+    // keyboard user back to the top of the page. The options go inert instead.
+    <fieldset className={result ? "question question--answered" : "question"}>
       <legend className="question__text">{question.question}</legend>
       {question.options.map(o => {
         const picked = result?.choice === o.id;
@@ -290,6 +308,8 @@ function Question({ lessonId, question, result, onAnswered }) {
           <button
             key={o.id}
             type="button"
+            aria-disabled={result ? "true" : undefined}
+            aria-pressed={picked}
             className={`question__option${picked ? " question__option--picked" : ""}${isAnswer ? " question__option--answer" : ""}${picked && !result.correct ? " question__option--wrong" : ""}`}
             onClick={() => answer(o.id)}
           >
@@ -297,20 +317,23 @@ function Question({ lessonId, question, result, onAnswered }) {
           </button>
         );
       })}
+      <div aria-live="polite">
       {result && (
         <p className={result.correct ? "question__why question__why--good" : "question__why question__why--bad"}>
           {result.explanation}
           {result.answerExplanation && <span className="question__answer"> {result.answerExplanation}</span>}
         </p>
       )}
+      </div>
     </fieldset>
   );
 }
 
-function Next({ onClick, children }) {
+function Next({ onClick, children, autoFocus = false }) {
   return (
     <div className="lesson__next">
-      <button className="cmd pixel" onClick={onClick}>
+      {/* autoFocus only where the button replaces one that had focus. */}
+      <button className="cmd pixel" onClick={onClick} autoFocus={autoFocus}>
         <span className="cmd__caret">▸</span> {children}
       </button>
     </div>

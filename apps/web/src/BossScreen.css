@@ -24,7 +24,7 @@
   padding: 12px 13px;
   text-align: left;
   background: var(--window-fill);
-  border: 2px solid var(--window-inner);
+  border: 2px solid var(--control-edge);
   color: var(--ink);
   cursor: pointer;
   transition: border-color .15s ease, transform .15s ease;
@@ -72,3 +72,5 @@
 
 .boss--locked { max-width: 640px; }
 .boss__lockedart { opacity: .45; margin-bottom: 12px; }
+/* Faded, the caption is text nobody can read (1.9:1). The picture says it anyway. */
+.boss__lockedart .breach__caption { display: none; }

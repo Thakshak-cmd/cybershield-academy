@@ -60,7 +60,7 @@ export function BossScreen({ bossId = "sec-900", onLeave }) {
   if (error && !boss) {
     return (
       <div className="boss boss--locked">
-        <Window title="The Aurora Breach" tone="quiet">
+        <Window as="h1" title="The Aurora Breach" tone="quiet">
           <div className="boss__lockedart" aria-hidden="true">
             <BreachDiagram compromised={["browser", "database", "session"]} secured={[]} />
           </div>
@@ -91,6 +91,7 @@ export function BossScreen({ bossId = "sec-900", onLeave }) {
   return (
     <div className="boss">
       <Window
+        as="h1"
         title={boss.title}
         tone={result?.passed ? "secure" : "breach"}
         badge={<span className="label">{boss.repo} · capstone</span>}
@@ -178,7 +179,12 @@ export function BossScreen({ bossId = "sec-900", onLeave }) {
             {result ? `${held} of ${boss.stages.length} held` : "nothing checked yet"}
           </span>
         </div>
-        {error && <p className="boss__error">{error}</p>}
+        {/* Always present, so each deployment's outcome is announced. */}
+        <p className="visually-hidden" aria-live="polite">
+          {result ? (result.passed ? "All three held. The Aurora Breach is closed."
+            : `${held} of ${boss.stages.length} held. Still open: ${result.compromised.join(", ")}.`) : ""}
+        </p>
+        {error && <p className="boss__error" role="alert">{error}</p>}
         {result && !result.passed && (
           <p className="boss__note">
             A stage that is still open is not a mistake in the others. These are three

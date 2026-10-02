@@ -20,7 +20,7 @@
   font-weight: 600;
   letter-spacing: .04em;
   background: transparent;
-  border: 1px solid var(--window-inner);
+  border: 1px solid var(--control-edge);
   color: var(--ink-2);
   cursor: pointer;
   transition: border-color .12s ease, color .12s ease;

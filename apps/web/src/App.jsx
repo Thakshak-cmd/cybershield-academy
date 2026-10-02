@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChallengeScreen } from "./ChallengeScreen.jsx";
 import { ProgressScreen } from "./ProgressScreen.jsx";
 import { BossScreen } from "./BossScreen.jsx";
@@ -12,6 +12,14 @@ import { setSoundEnabled, soundEnabled } from "./sound.js";
 import { api } from "./api.js";
 import "./App.css";
 
+const SCREEN_TITLES = {
+  "/": "Briefing",
+  "/assignment": "Assignment",
+  "/manual": "Field manual",
+  "/progress": "Progress",
+  "/boss": "The Aurora Breach"
+};
+
 export function App() {
   const [live, setLive] = useState(/** @type {boolean|null} */ (null));
   const [session, setSession] = useState(
@@ -20,6 +28,8 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [sound, setSound] = useState(soundEnabled);
   const [path, navigate] = useRoute();
+  const main = useRef(/** @type {HTMLElement|null} */ (null));
+  const firstRoute = useRef(true);
 
   const { palette, setPalette, following, pinned } =
     usePalette({ isStudyParticipant: !!session?.isStudyParticipant });
@@ -44,6 +54,16 @@ export function App() {
       setReady(true);
     })();
   }, []);
+
+  // Each screen gets its own document title, so a screen reader announces where
+  // a navigation landed and the browser's history and tabs say something useful.
+  // Focus moves to the new screen for the same reason; without it a screen
+  // reader stays on the link that was clicked and the change goes unannounced.
+  useEffect(() => {
+    document.title = `${session ? (SCREEN_TITLES[path] ?? "Briefing") : "Sign in"} · CyberShield Academy`;
+    if (firstRoute.current) { firstRoute.current = false; return; }
+    main.current?.focus({ preventScroll: true });
+  }, [path, !!session]);
 
   async function signOut() {
     await api.logout();
@@ -138,7 +158,7 @@ export function App() {
       {/* Keyed on the route so each screen enters rather than swapping in place.
           One short movement, not a choreography -- navigation happens constantly
           and anything longer becomes a delay. */}
-      <main className="route" key={session ? path : "signin"}>
+      <main className="route" key={session ? path : "signin"} ref={main} tabIndex={-1}>
         {!session ? (
           <AuthScreen onAuthenticated={setSession} />
         ) : path === "/assignment" ? (

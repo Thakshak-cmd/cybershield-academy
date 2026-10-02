@@ -25,7 +25,7 @@
   display: flex; align-items: center; gap: 7px;
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid var(--window-inner);
+  border: 1px solid var(--control-edge);
   color: var(--ink-2);
   font-size: 13px;
   cursor: pointer;
@@ -87,13 +87,15 @@
   text-align: left;
   padding: 9px 12px;
   background: transparent;
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-edge);
   color: var(--ink-2);
   font-size: 14px;
   cursor: pointer;
 }
-.question__option:hover:not(:disabled) { border-color: var(--window-edge); color: var(--ink); }
-.question:disabled .question__option { cursor: default; }
+.question:not(.question--answered) .question__option:hover { border-color: var(--window-edge); color: var(--ink); }
+.question--answered .question__option { cursor: default; }
+.lesson__stage { display: flex; flex-direction: column; gap: 16px; }
+.lesson__stage:focus { outline: none; }
 .question__option--answer { border-color: var(--secure); color: var(--ink); box-shadow: inset 3px 0 0 var(--secure); }
 .question__option--wrong { border-color: var(--breach); box-shadow: inset 3px 0 0 var(--breach); }
 .question__why { margin: 4px 0 0; font-size: 13.5px; line-height: 1.6; }

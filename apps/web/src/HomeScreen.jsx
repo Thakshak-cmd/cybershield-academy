@@ -53,7 +53,7 @@ export function HomeScreen({ handle, onTakeTicket, onOpenCapstone, onOpenProgres
   return (
     <div className="home">
       <div className="home__main">
-        <Window title="Shift briefing" badge={<span className="label">from incident response</span>}>
+        <Window as="h1" title="Shift briefing" badge={<span className="label">from incident response</span>}>
           <div className="briefing">
             <Portrait name="Marcus" role="Incident response" />
             <div className="briefing__body">

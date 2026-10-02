@@ -154,9 +154,20 @@ export function ChallengeScreen() {
   const funcPassing = verdict ? verdict.functional.passed : 0;
   const funcTotal = verdict ? verdict.functional.total : challenge.functionalCount;
 
+  // What a screen-reader user hears when the verdict lands. Kept in a region
+  // that is always on the page, so the change of text is what gets announced.
+  const announcement = !verdict ? ""
+    : verdict.passed ? `Hole closed. ${verdict.xpAwarded ?? 0} XP.${verdict.newBadges?.length ? ` ${verdict.newBadges.length} new commendation${verdict.newBadges.length > 1 ? "s" : ""}.` : ""}`
+    : verdict.parseError ? "That doesn't parse. Check the syntax and deploy again."
+    : `${(FAILURE_COPY[challenge.format ?? "patch"] ?? FAILURE_COPY.patch)[0]}. ` +
+      `${verdict.security.passed} of ${verdict.security.total} attacks repelled, ` +
+      `${verdict.functional.passed} of ${verdict.functional.total} checks passing.`;
+
   return (
     <div className="screen">
+      <p className="visually-hidden" aria-live="polite">{announcement}</p>
       <Window
+        as="span"
         title={`Ticket ${challenge.id.toUpperCase()}`}
         badge={<span className="label">{challenge.repo} · {challenge.tier}</span>}
       >
@@ -307,7 +318,7 @@ export function ChallengeScreen() {
                 </button>
               </li>
             </menu>
-            {error && <p className="error">{error}</p>}
+            {error && <p className="error" role="alert">{error}</p>}
           </Window>
 
           <Window title="Field notes" tone="quiet">
@@ -353,8 +364,11 @@ function CodeBlock({ source, picked = [], onPick }) {
   const lines = source.split("\n");
   const pickable = typeof onPick === "function";
   return (
-    <pre className={pickable ? "code code--pickable" : "code"} role={pickable ? "listbox" : undefined}
-         aria-multiselectable={pickable ? "true" : undefined}>
+    // Pickable lines are toggle buttons in a named group. A listbox would promise
+    // arrow-key movement and single-tab-stop behaviour that this does not have;
+    // buttons promise exactly what they do.
+    <pre className={pickable ? "code code--pickable" : "code"} role={pickable ? "group" : undefined}
+         aria-label={pickable ? "The code. Choose the line with the flaw." : undefined}>
       {lines.map((line, i) => {
         const n = i + 1;
         const on = picked.includes(n);
@@ -365,8 +379,7 @@ function CodeBlock({ source, picked = [], onPick }) {
             key={i}
             {...(pickable ? {
               type: "button",
-              role: "option",
-              "aria-selected": on,
+              "aria-pressed": on,
               onClick: () => onPick(n)
             } : {})}
           >
@@ -387,6 +400,7 @@ function RuleList({ results }) {
         <li key={r.id} className={r.pass ? "rule rule--pass" : "rule rule--fail"}>
           <span className="rule__mark" aria-hidden="true">{r.pass ? "✦" : "✕"}</span>
           <span>
+            <span className="visually-hidden">{r.pass ? "Passed: " : "Failed: "}</span>
             <code className="rule__id">{r.id}</code>
             {!r.pass && r.evidence && <span className="rule__why">{r.evidence}</span>}
           </span>

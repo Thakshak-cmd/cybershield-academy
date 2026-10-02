@@ -164,7 +164,10 @@ export function SkillTree({ nodes, titles, mastery, unlocked, cleared, onSelect 
                   className={`node node--${s}${node.isBoss ? " node--boss" : ""}`}
                   disabled={s === "locked"}
                   onClick={() => onSelect?.(node.id)}
-                  aria-label={`${meta.title}, ${s}`}
+                  // The lines between nodes are drawn, not read, so a locked node
+                  // says in words what it is waiting on.
+                  aria-label={`${meta.title}, ${s}${s === "locked" && node.requires
+                    ? `, opens after ${titles[node.requires]?.title ?? node.requires}` : ""}`}
                 >
                   <span className="node__top">
                     {node.isBoss

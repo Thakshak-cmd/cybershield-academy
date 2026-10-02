@@ -42,7 +42,7 @@ export function ManualScreen() {
 
   return (
     <div className="manual">
-      <Window title="Field manual" badge={<span className="label">{filed} of {lessons.length} filed</span>}>
+      <Window as="h1" title="Field manual" badge={<span className="label">{filed} of {lessons.length} filed</span>}>
         <p className="manual__intro">
           Every briefing you've been handed, kept for when you need it. New ones arrive with the first
           ticket that needs them.

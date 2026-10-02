@@ -7,14 +7,14 @@
   padding: 4px 10px;
   font-size: 12px;
   background: transparent;
-  border: 1px solid var(--window-inner);
+  border: 1px solid var(--control-edge);
   color: var(--ink-2);
   cursor: pointer;
 }
 .demo__preset:hover { color: var(--ink); border-color: var(--window-edge); }
 .demo__preset--on { color: var(--window-title); border-color: var(--window-edge); background: var(--accent-soft); }
 
-.demo__toggle { display: flex; flex-wrap: wrap; gap: 0; align-self: flex-start; border: 1px solid var(--window-inner); }
+.demo__toggle { display: flex; flex-wrap: wrap; gap: 0; align-self: flex-start; border: 1px solid var(--control-edge); }
 .demo__tab {
   padding: 6px 12px;
   background: transparent;
@@ -23,7 +23,7 @@
   cursor: pointer;
   font-size: 12.5px;
 }
-.demo__tab + .demo__tab { border-left: 1px solid var(--window-inner); }
+.demo__tab + .demo__tab { border-left: 1px solid var(--control-edge); }
 .demo__tab--on { background: var(--accent-soft); color: var(--window-title); }
 .demo__tab code { font-family: var(--f-code); }
 

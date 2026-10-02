@@ -119,6 +119,10 @@ function SqliDemo() {
         </>
       )}
       <Legend items={[["demo__data", "data"], ["demo__escaped", "read as SQL"]]} />
+      <Announce text={mode === "param" ? "Parameterised. The input is only ever a value."
+        : escaped ? "Part of the input is now read as SQL."
+        : !balanced ? "The query no longer parses."
+        : "All of the input stayed inside the value."} />
     </div>
   );
 }
@@ -207,6 +211,10 @@ function XssDemo() {
           </p>
         </>
       )}
+      <Announce text={mode === "text" ? "Shown as text. Nothing is built."
+        : running.length ? `The note becomes elements, and one runs script: ${running[0].runs[0]}.`
+        : built.length ? "The note becomes elements, though none runs script."
+        : "Just text. Nothing is built."} />
     </div>
   );
 }
@@ -285,11 +293,24 @@ function CsrfDemo() {
           The real form still works with the defences on. They stop the forgery, not the customer.
         </p>
       )}
+      <Announce text={outcome ? `Aurora replies ${outcome.text}` : ""} />
     </div>
   );
 }
 
 /* --------------------------------------------------------------- pieces */
+
+/**
+ * What each demo is showing, for a screen reader, in one short sentence.
+ *
+ * Always on the page, with only its text changing: a live region mounted at the
+ * same moment as its content is often not announced at all. One summary per
+ * demo, rather than every changing element marked live, so typing into the
+ * search box is not read back a character at a time.
+ */
+function Announce({ text }) {
+  return <p className="visually-hidden" aria-live="polite">{text}</p>;
+}
 
 function DemoInput({ label, value, onChange, presets }) {
   return (
@@ -299,7 +320,7 @@ function DemoInput({ label, value, onChange, presets }) {
              onChange={e => onChange(e.target.value)} spellCheck={false} autoComplete="off" />
       <div className="demo__presets">
         {presets.map(p => (
-          <button key={p.label} type="button"
+          <button key={p.label} type="button" aria-pressed={p.value === value}
                   className={p.value === value ? "demo__preset demo__preset--on" : "demo__preset"}
                   onClick={() => onChange(p.value)}>
             {p.label}
@@ -312,9 +333,9 @@ function DemoInput({ label, value, onChange, presets }) {
 
 function Toggle({ value, onChange, options }) {
   return (
-    <div className="demo__toggle" role="radiogroup">
+    <div className="demo__toggle" role="group" aria-label="Which version">
       {options.map(([id, text]) => (
-        <button key={id} type="button" role="radio" aria-checked={value === id}
+        <button key={id} type="button" aria-pressed={value === id}
                 className={value === id ? "demo__tab demo__tab--on" : "demo__tab"}
                 onClick={() => onChange(id)}>
           <code>{text}</code>

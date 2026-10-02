@@ -1,3 +1,4 @@
+import { useId } from "react";
 import "./Window.css";
 
 /**
@@ -14,14 +15,21 @@ import "./Window.css";
  * @param {React.ReactNode} [props.badge]  right-aligned chip in the title bar
  * @param {"default"|"breach"|"secure"|"quiet"} [props.tone]
  * @param {boolean} [props.flush]    drop the inner padding, for code panes
+ * @param {"h1"|"h2"|"h3"|"span"} [props.as]
+ *   the title's element. A heading by default, so a screen-reader user can move
+ *   between panels the way a sighted one scans their title bars. The first
+ *   window on a screen is usually its h1; "span" is for a frame whose title is
+ *   a label above a heading of its own.
  * @param {React.ReactNode} props.children
  */
-export function Window({ title, badge, tone = "default", flush = false, children, ...rest }) {
+export function Window({ title, badge, tone = "default", flush = false, as: Title = "h2", children, ...rest }) {
+  const id = useId();
+  const named = title && Title !== "span";
   return (
-    <section className={`win win--${tone}`} {...rest}>
+    <section className={`win win--${tone}`} aria-labelledby={named ? id : undefined} {...rest}>
       {title && (
         <header className="win__bar">
-          <span className="win__title pixel">{title}</span>
+          <Title id={id} className="win__title pixel">{title}</Title>
           {badge && <span className="win__badge">{badge}</span>}
         </header>
       )}

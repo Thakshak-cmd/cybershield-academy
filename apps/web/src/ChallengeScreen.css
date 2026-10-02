@@ -163,7 +163,7 @@
 .review__choice {
   display: flex; align-items: center; gap: 8px;
   padding: 9px 14px;
-  border: 1px solid var(--window-inner);
+  border: 1px solid var(--control-edge);
   cursor: pointer;
   font-size: 14px;
   color: var(--ink);
@@ -180,7 +180,7 @@
 .reason {
   display: flex; align-items: flex-start; gap: 10px;
   padding: 9px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-edge);
   cursor: pointer;
   font-size: 13.5px;
   line-height: 1.5;
@@ -200,7 +200,3 @@
 .consequence__text { margin: 0; font-size: 13px; color: var(--breach); line-height: 1.55; }
 .consequence__hint { display: block; color: var(--muted); margin-top: 2px; }
 
-.visually-hidden {
-  position: absolute; width: 1px; height: 1px; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap;
-}

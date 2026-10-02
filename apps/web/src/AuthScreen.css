@@ -19,7 +19,7 @@
   padding: 9px 11px;
   background: var(--code-bg);
   color: var(--ink);
-  border: 1px solid var(--window-inner);
+  border: 1px solid var(--control-edge);
   border-radius: 2px;
 }
 .field__input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }

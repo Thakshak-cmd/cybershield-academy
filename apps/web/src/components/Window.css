@@ -68,6 +68,7 @@
 }
 
 .win__title {
+  margin: 0;
   font-size: 14.5px;
   font-weight: 600;
   color: var(--window-title);

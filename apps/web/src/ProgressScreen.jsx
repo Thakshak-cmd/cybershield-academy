@@ -52,6 +52,7 @@ export function ProgressScreen({ onOpenChallenge }) {
 
   return (
     <div className="progress">
+      <h1 className="visually-hidden">Your progress</h1>
       {data.degraded && (
         <Window tone="breach" title="Mastery unavailable">
           <p className="progress__degraded">
