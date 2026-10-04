@@ -476,7 +476,7 @@ async function defaultLoadState(subjectId) {
   const [observations, catalogue, progress] = await Promise.all([
     defaultObservations(subjectId),
     /** @type {Promise<LeanChallenge[]>} */ (
-      Challenge.find({}, { id: 1, skill: 1, tier: 1, masteryRequired: 1, isDrill: 1, isBoss: 1, requires: 1 }).lean()
+      Challenge.find({}, { id: 1, skill: 1, tier: 1, masteryRequired: 1, isDrill: 1, isBoss: 1, isCapstone: 1, requires: 1 }).lean()
     ),
     /** @type {Promise<{ solvedChallenges?: string[], unlockedNodes?: string[] } | null>} */ (
       Progress.findOne({ subjectId }, { solvedChallenges: 1, unlockedNodes: 1 }).lean()
@@ -491,6 +491,7 @@ async function defaultLoadState(subjectId) {
       mastery_required: c.masteryRequired ?? 0,
       is_drill: !!c.isDrill,
       is_boss: !!c.isBoss,
+      is_capstone: !!c.isCapstone,
       requires: c.requires ?? null
     })),
     cleared: progress?.solvedChallenges ?? [],

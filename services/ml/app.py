@@ -48,6 +48,7 @@ class CandidateIn(BaseModel):
     is_drill: bool = False
     is_boss: bool = False
     requires: str | None = None
+    is_capstone: bool = False
 
 
 class RecommendRequest(BaseModel):

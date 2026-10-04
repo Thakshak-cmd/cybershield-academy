@@ -161,6 +161,15 @@ describe("seeding", () => {
     assert.equal(await models.Challenge.countDocuments({ id: "sec-104" }), 1);
   });
 
+  test("the capstone keeps its flag through seeding", async () => {
+    // Mongoose drops fields its schema does not declare, silently. Without the
+    // flag the model gates the capstone as an SQL-only boss.
+    const { seed } = await import("../src/seed.js");
+    await seed();
+    const cap = await models.Challenge.findOne({ id: "sec-900" }).lean();
+    assert.equal(cap.isCapstone, true);
+  });
+
   test("every skill has a challenge a brand-new learner can reach", async () => {
     // A catalogue where the cheapest challenge costs more than the starting prior
     // strands every new user on an empty screen. Caught by the smoke test, not by

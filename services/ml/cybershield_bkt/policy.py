@@ -52,6 +52,10 @@ class Candidate:
     is_boss: bool = False
     #: Challenge that must be cleared first. Drills have none.
     requires: str | None = None
+    #: The encounter spanning every skill. Opens on ``capstone_unlocked`` -- the
+    #: same rule the API enforces -- rather than on its nominal skill's boss gate,
+    #: so the tree can never show it open while the API refuses it.
+    is_capstone: bool = False
 
 
 @dataclass(frozen=True)
@@ -78,6 +82,7 @@ def unlocked_nodes(
     only the tree is one-way. See docs/game-design.md section 5, finding 3.
     """
     open_now = set(previously_unlocked or ())
+    all_skills = sorted({c.skill for c in candidates if not c.is_capstone})
 
     for c in candidates:
         if c.challenge_id in open_now:
@@ -86,7 +91,11 @@ def unlocked_nodes(
             continue
 
         level = mastery.get(c.skill, 0.0)
-        if c.is_boss:
+        if c.is_capstone:
+            # With no ordinary skills, "every skill holds" would be vacuously true.
+            if all_skills and capstone_unlocked(mastery, all_skills):
+                open_now.add(c.challenge_id)
+        elif c.is_boss:
             if boss_unlocked(c.skill, mastery, cleared, candidates):
                 open_now.add(c.challenge_id)
         elif level >= c.mastery_required:
@@ -132,7 +141,11 @@ def recommend(
     the learner has exhausted the content, not that any challenge will do.
     """
     open_ids = unlocked_nodes(candidates, mastery, cleared, previously_unlocked)
-    options = [c for c in candidates if c.challenge_id in open_ids]
+    # The capstone is entered from its own screen, never served as the next
+    # ticket: the assignment screen cannot render a multi-stage encounter, and the
+    # learner should choose to face it, as the briefing invites them to.
+    # Per-skill bosses are ordinary tickets and stay servable.
+    options = [c for c in candidates if c.challenge_id in open_ids and not c.is_capstone]
     if not options:
         return None
 
@@ -200,8 +213,6 @@ def recommend(
 
     if choice.is_drill:
         reason = f"{skill} is weakest at {level:.2f} and only the drill is open"
-    elif choice.is_boss:
-        reason = f"{skill} mastery {level:.2f} with enough cleared to face the boss"
     else:
         reason = f"{skill} is weakest at {level:.2f}"
 

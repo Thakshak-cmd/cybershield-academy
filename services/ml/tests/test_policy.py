@@ -229,3 +229,35 @@ class TestFailureModes:
         mastery = {s: 0.01 for s in SKILLS}
         rec = recommend(tree, mastery, cleared=set())
         assert rec is not None
+
+
+class TestCapstone:
+    """The encounter spanning every skill, as the content actually ships it:
+    tagged with one skill, but owned by all three."""
+
+    def _tree(self):
+        return build_tree() + [Candidate("cap", "sqli", 0.0, is_boss=True, is_capstone=True)]
+
+    def test_one_strong_skill_does_not_open_it(self):
+        # It is tagged sqli, so the per-skill boss rule would open it on SQL
+        # injection alone -- while the API, rightly, refuses it.
+        tree = self._tree()
+        cleared = {c.challenge_id for c in tree if c.skill == "sqli" and not c.is_boss}
+        assert "cap" not in unlocked_nodes(tree, {"sqli": 0.95, "xss": 0.15, "csrf": 0.15}, cleared)
+
+    def test_it_opens_when_every_skill_holds(self):
+        tree = self._tree()
+        assert "cap" in unlocked_nodes(tree, {s: 0.75 for s in SKILLS}, set())
+
+    def test_it_is_never_served_as_the_next_ticket(self):
+        # It has its own screen; the assignment screen cannot render it.
+        tree = self._tree()
+        cleared = {c.challenge_id for c in tree if not c.is_boss}
+        for mastery in ({s: 0.9 for s in SKILLS}, {"sqli": 0.76, "xss": 0.9, "csrf": 0.9}):
+            rec = recommend(tree, mastery, cleared)
+            assert rec is None or rec.challenge_id != "cap"
+
+    def test_with_no_ordinary_skills_it_stays_shut(self):
+        # "Every skill holds" over no skills at all is vacuously true.
+        only = [Candidate("cap", "sqli", 0.0, is_boss=True, is_capstone=True)]
+        assert "cap" not in unlocked_nodes(only, {"sqli": 0.95}, set())
