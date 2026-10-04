@@ -116,7 +116,7 @@ The template calls this "the central engineering chapter".
 
 | § | Words | Must answer | Evidence / sources | You supply |
 |---|---|---|---|---|
-| 3.1 Project approach | 250 | Which approach, and why. **Don't claim Agile unless you ran iterations, a backlog and reviews** | evidence.md "Timeline": 31 incremental commits, each tested before the next; prototypes (game-design §"two interaction prototypes") | Honest description, incl. **how AI-assisted development was used and checked** |
+| 3.1 Project approach | 250 | Which approach, and why. **Don't claim Agile unless you ran iterations, a backlog and reviews** | evidence.md "Timeline": 34 small, working increments (17 record their test results); prototypes (game-design §"two interaction prototypes") | Honest description, incl. **how AI-assisted development was used and checked** |
 | 3.2 Requirements and success criteria | 250 + table | FR/NFR with success criteria that §4.4 can judge | evidence.md "Candidate requirements" | Final requirement set and priorities (MoSCoW) |
 | 3.3 Design | 450 + diagrams | Architecture, data model, UI. Every diagram introduced and discussed | evidence.md "Architecture"; `telemetry-model.md` (event log); `game-design.md` (loop, formats, UI) | Which diagrams to include |
 | 3.4 Tools and technologies | 300 | Choices **and the alternatives rejected** | evidence.md "Technology choices" | |

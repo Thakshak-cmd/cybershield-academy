@@ -2,7 +2,7 @@
 
 Facts and figures about the artefact, for writing the dissertation from. Each item
 points at the file or commit it comes from, so anything cited can be checked. Figures
-are as of **4 Oct 2026** (commit history to `37f5207`); rerun the commands to refresh
+are as of **4 Oct 2026** (commit history to `3521c14`); rerun the commands to refresh
 them before submission.
 
 This is raw material, not prose. See [`plan.md`](plan.md) for where each piece goes.
@@ -22,8 +22,8 @@ This is raw material, not prose. See [`plan.md`](plan.md) for where each piece g
 | Badges | 6 | `content/badges.js` |
 | Source lines (excl. tests) | web 5,509; API 2,304; validator 1,238; shared 536; ML 1,086 (BKT 604, analysis 318, service 164); study scripts 1,078; content 2,040 | `wc -l` |
 | Test lines | API 2,516; validator 541; ML 742 | same |
-| Automated tests | **497**: API 182, validator 208, web 10, integration (real MongoDB) 16, Python 81; plus a 31-check end-to-end smoke test | `npm test --workspaces`, `npm run test:integration`, `npm run ml:test`, `npm run smoke` |
-| Commits | 31, 25 Aug – 2 Oct 2026 | `git log` |
+| Automated tests | **502**: API 182, validator 208, web 10, integration (real MongoDB) 17, Python 85; plus a 31-check end-to-end smoke test | `npm test --workspaces`, `npm run test:integration`, `npm run ml:test`, `npm run smoke` |
+| Commits | 34, 25 Aug – 4 Oct 2026 | `git log` |
 
 ## Timeline (from the commit history)
 
@@ -39,8 +39,9 @@ Apr, approval) and planned vs actual.
 | 29 Sep | Harden + review formats, content to 20 items, unified attempt recording, posture (consequence), title screen, Atlas connection, shift briefing, **lessons** | `304e0cf` … `28c2d97` (8) |
 | 1 Oct | Encrypted study export, withdrawal tool, analysis pipeline | `f3c862a`, `70f03bc` |
 | 2 Oct | WCAG 2.1 AA audit and fixes | `37f5207` |
+| 4 Oct | Dissertation plan and evidence pack; capstone gate fix; risk register update | `ea6d256`, `3521c14`, `237d8ef` |
 
-The history is a sequence of small, working increments, and 17 of the 31 commit
+The history is a sequence of small, working increments, and 17 of the 34 commit
 messages record the test results at that point. That is the honest basis for
 describing the approach as **iterative and incremental**. Whether it was "Agile" depends on whether you also kept
 a backlog and held reviews, which only you can say.
@@ -139,8 +140,8 @@ and set the priorities yourself. Each has a way to verify it.
 | Validator: lessons | 13 | Guided fixes start failing and end passing; worked examples are not any ticket's answer; checks are well-formed | same |
 | API unit | 182 | Attempt logic, XP rules, auth, routes, gates, hints, badges, streaks, posture, study tooling, analysis | `npm test -w @cybershield/api` |
 | Web | 10 | The briefing never claims anything the record doesn't show | `npm test -w @cybershield/web` |
-| Integration | 16 | Real MongoDB: atomic sequences, unique index, concurrent appends, privacy on disk, capstone completion | `npm run test:integration` |
-| Python | 81 | BKT model, policy (simulated learners), evaluation metrics, statistics checked against hand-worked values | `npm run ml:test` |
+| Integration | 17 | Real MongoDB: atomic sequences, unique index, concurrent appends, privacy on disk, capstone completion | `npm run test:integration` |
+| Python | 85 | BKT model, policy (simulated learners), evaluation metrics, statistics checked against hand-worked values | `npm run ml:test` |
 | Smoke (end to end) | 31 checks | Fresh database → recommendation → lesson gate → full lesson → bad patch → good patch → log integrity → mastery moves | `npm run smoke` |
 | Accessibility | 11 findings fixed | axe-core, calculated contrast, keyboard walkthrough | `docs/accessibility.md` |
 
@@ -176,6 +177,7 @@ a test or check. Useful for §4.3 ("What bugs did you find and fix?") and §4.7.
 | 23 | Briefing named an arbitrary "weakest" skill on a tie | Browser testing | Invented fact presented to the learner | `fd86045` |
 | 24 | Answering a check question dropped keyboard focus to the top of the page | Accessibility audit | Keyboard users lose their place | `37f5207` |
 | 25 | Results not announced to screen readers; pass/fail shown only by shape | Accessibility audit | Screen-reader users get no feedback | `37f5207` |
+| 26 | The model gated the capstone on SQLi alone and could serve it as an ordinary ticket | Checking the risk register's claims against the code | Skill tree showed it open while the API refused it; late in a session, a screen that cannot render it | `3521c14` |
 
 ## Code excerpts worth showing
 
@@ -252,7 +254,7 @@ Facts to report honestly in §3.1 and §3.9, and to declare on the title page:
   design (e.g. the palette and UI choices you made when asked; the lesson format;
   everyone-sees-the-briefing; the study design); review and acceptance of each
   increment; running and verifying it.
-- How correctness was checked independently of the assistant: 497 automated tests,
+- How correctness was checked independently of the assistant: 502 automated tests,
   type checking, end-to-end smoke tests, browser verification, an accessibility audit.
 
 APA 7 format for citing a generative AI tool (confirm against university guidance):
