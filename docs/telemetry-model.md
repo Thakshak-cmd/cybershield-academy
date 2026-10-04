@@ -58,13 +58,13 @@ events remain interpretable rather than silently mis-parsed.
 | `challenge.started` | Learner opens a challenge | `challengeId`, `skill`, `subSkill`, `tier` |
 | `challenge.attempted` | Patch submitted for validation | `attemptNo`, `correct`, `validator`, `failedRules[]`, `durationMs` |
 | `challenge.completed` | Challenge passes validation | `totalAttempts`, `hintsUsed`, `totalDurationMs`, `xpAwarded` |
-| `challenge.abandoned` | Session ends without completion | `attemptsMade`, `lastActiveAt` |
+| `challenge.abandoned` | **Not emitted.** Derivable from the log (a start with no completion before the session's last event), though the analysis does not currently report it | — |
 | `hint.requested` | Learner requests a hint | `hintLevel` (1–3), `attemptNo` |
 | `xp.awarded` | XP granted | `amount`, `reason`, `runningTotal` |
 | `badge.earned` | Badge unlocked | `badgeId`, `skill` |
-| `mastery.updated` | BKT posterior recomputed | `skill`, `pMasteryBefore`, `pMasteryAfter` |
+| `mastery.updated` | **Not emitted.** Mastery is recomputed from the observations on every request, so storing it would be a second copy that could drift | — |
 | `recommendation.served` | Adaptive engine picks next challenge | `challengeId`, `pMastery`, `policy`, `reason` |
-| `session.started` / `session.ended` | Session boundaries | `sessionId`, `durationMs` |
+| `session.started` / `session.ended` | Sign-in / sign-out. A session that ends by closing the tab has no `session.ended`; analysis uses its last event | `sessionId`, `durationMs` |
 | `lesson.started` | A briefing file is opened | `lessonId`, `skill`, `reread` |
 | `lesson.practised` | The guided fix is checked | `attemptNo`, `passed`, `failedRules[]`, `submissionHash` |
 | `lesson.revealed` | "Show me" after two tries | `lessonId` |
@@ -72,6 +72,11 @@ events remain interpretable rather than silently mis-parsed.
 | `lesson.completed` | The lesson is filed | `durationMs`, `reread` |
 
 Lesson events are never BKT observations. See game-design.md §1a.
+
+Both unemitted types stay in the event contract (`EVENT_TYPES`) so a later version
+could record them without a schema change. They are kept out of the log for the same
+reason as `wasFollowed` (deviations D6): anything reconstructible from the log is
+reconstructed from it.
 
 ### The BKT observation
 
