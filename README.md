@@ -48,6 +48,24 @@ npm run dev:atlas   # the same three services, API on the real database
 Nothing is seeded automatically in this mode, so content cannot change under a
 study session. Your IP must be on the Atlas Network Access list.
 
+## Sharing a private link
+
+```
+npm run share
+```
+
+Builds the site, starts everything, and opens a Cloudflare tunnel. It prints a
+random `https://….trycloudflare.com` link and a password: both are needed to get
+in, and both change every run. Your Mac has to stay on and running it. Ctrl+C
+stops it.
+
+- First time only: `brew install cloudflared`.
+- Uses a throwaway database, so visitors' accounts are not kept. Add `-- --atlas`
+  to use the real one in `.env.local`.
+- `npm run share -- --local` does everything but the tunnel, so you can try the
+  password page on `http://localhost:4173` first.
+- Set `SHARE_PASSWORD` to choose the password instead of generating one.
+
 ## Running the study
 
 Everything below works on the real database in `.env.local`, and writes only

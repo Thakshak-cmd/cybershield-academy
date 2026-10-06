@@ -38,6 +38,15 @@
         "PORT=3101 node apps/api/scripts/dev-server.js & API_TARGET=http://localhost:3101 npm run dev --workspace @cybershield/web -- --port 5273 --strictPort"
       ],
       "port": 5273
+    },
+    {
+      "name": "share-local",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/share.mjs",
+        "--local"
+      ],
+      "port": 4173
     }
   ]
 }

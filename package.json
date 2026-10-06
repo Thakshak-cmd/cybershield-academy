@@ -30,7 +30,8 @@
     "study:export": "node --env-file=.env.local scripts/study/export.mjs",
     "study:withdraw": "node --env-file=.env.local scripts/study/withdraw.mjs",
     "study:analyse": "node scripts/study/analyse.mjs",
-    "study:rehearse": "node scripts/study/rehearse.mjs"
+    "study:rehearse": "node scripts/study/rehearse.mjs",
+    "share": "node scripts/share.mjs"
   },
   "devDependencies": {
     "@types/express": "^4.17.25",
