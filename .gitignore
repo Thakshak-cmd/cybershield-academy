@@ -49,3 +49,6 @@ services/ml/.pytest_cache/
 services/ml/.venv/
 .mongodb-binaries/
 apps/web/dist/
+
+# the author's working dissertation document: theirs to version, not the repo's
+docs/dissertation/*.docx
