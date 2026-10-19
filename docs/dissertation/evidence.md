@@ -178,7 +178,7 @@ a test or check. Useful for §4.3 ("What bugs did you find and fix?") and §4.7.
 | 24 | Answering a check question dropped keyboard focus to the top of the page | Accessibility audit | Keyboard users lose their place | `37f5207` |
 | 25 | Results not announced to screen readers; pass/fail shown only by shape | Accessibility audit | Screen-reader users get no feedback | `37f5207` |
 | 26 | The model gated the capstone on SQLi alone and could serve it as an ordinary ticket | Checking the risk register's claims against the code | Skill tree showed it open while the API refused it; late in a session, a screen that cannot render it | `3521c14` |
-| 27 | Signing in kept the previous page, so a new user could land straight in a lesson; nothing explained the platform first | **User testing** (a friend's session, 19 Oct) | An overwhelming first experience | *this commit* |
+| 27 | Signing in kept the previous page, so a new user could land straight in a lesson; nothing explained the platform first | **User testing** (a friend's session, 19 Oct) | An overwhelming first experience | `79d9cb6` |
 
 ## Code excerpts worth showing
 
