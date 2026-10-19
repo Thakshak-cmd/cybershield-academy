@@ -264,3 +264,41 @@ describe("authenticated routes", () => {
     assert.equal((await fetch(base + "/api/next")).status, 401);
   });
 });
+
+describe("the welcome", () => {
+  const authed = token => ({ authorization: `Bearer ${token}` });
+
+  test("a new account has not been welcomed", async () => {
+    const body = await (await register("newcomer")).json();
+    assert.equal(body.welcomed, false);
+    const me = await (await fetch(base + "/api/auth/me", { headers: authed(body.token) })).json();
+    assert.equal(me.welcomed, false);
+  });
+
+  test("finishing it is recorded, and remembered at the next sign-in on any machine", async () => {
+    const { token } = await (await register("newcomer")).json();
+    const res = await post("/api/welcome", { durationMs: 45000 }, authed(token));
+    assert.equal(res.status, 200);
+
+    const login = await (await post("/api/auth/login", { handle: "newcomer", password: GOOD_PASSWORD })).json();
+    assert.equal(login.welcomed, true);
+
+    const user = await models.User.findOne({ handle: "newcomer" }).lean();
+    const ev = await models.Event.findOne({ subjectId: user.subjectId, type: "welcome.completed" }).lean();
+    assert.equal(ev.payload.durationMs, 45000);
+    assert.equal(ev.payload.reread, false);
+  });
+
+  test("reopening it from the briefing is marked as a reread", async () => {
+    const { token } = await (await register("newcomer")).json();
+    await post("/api/welcome", {}, authed(token));
+    await post("/api/welcome", {}, authed(token));
+    const user = await models.User.findOne({ handle: "newcomer" }).lean();
+    const evs = await models.Event.find({ subjectId: user.subjectId, type: "welcome.completed" }).sort({ seq: 1 }).lean();
+    assert.deepEqual(evs.map(e => e.payload.reread), [false, true]);
+  });
+
+  test("needs a token", async () => {
+    assert.equal((await post("/api/welcome", {})).status, 401);
+  });
+});

@@ -32,8 +32,10 @@ Being different from these is not the same as ignoring what they get right.
   first attempt is derivable from `session.started` and the first
   `challenge.attempted`, and is reported in the study analysis. Since the shift
   briefing and the lessons were added, every learner lands on the briefing and
-  takes their first skill's lesson (about four minutes) before their first
-  attempt, so the interval includes both. That applies to all participants
+  reads the one-screen welcome (under a minute), then takes their first skill's
+  lesson (about four minutes) before their first attempt, so the interval
+  includes all three. `welcome.completed` and `lesson.completed` carry their own
+  durations, so the parts can be separated in analysis. That applies to all participants
   equally, but it should be stated when the number is reported, and it is not
   comparable to pilot sessions run before these existed.
 - **Bite-sized items** — the 30–60 second "spot the flaw" format in game-design.md

@@ -2,7 +2,7 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { SCHEMA_VERSION } from "@cybershield/shared";
-import { User } from "../models/index.js";
+import { Event, User } from "../models/index.js";
 import { append as defaultAppend } from "../telemetry.js";
 import {
   TOKEN_TTL, burnComparableTime, checkPassword, hashPassword,
@@ -31,6 +31,15 @@ const LOCKOUT_MS = 15 * 60 * 1000;
 export function createAuthRouter(deps = {}) {
   const router = Router();
   const append = deps.append ?? defaultAppend;
+
+  /**
+   * Whether this account has been through the welcome. Derived from the log,
+   * like everything else that can be, so it holds on any machine -- a study
+   * participant on a lab computer must not see it twice, or miss it.
+   *
+   * @param {string} subjectId
+   */
+  const welcomed = async subjectId => !!(await Event.exists({ subjectId, type: "welcome.completed" }));
 
   function issue(user) {
     const secret = process.env.JWT_SECRET;
@@ -89,7 +98,8 @@ export function createAuthRouter(deps = {}) {
       res.status(201).json({
         token,
         handle: user.handle,
-        isStudyParticipant
+        isStudyParticipant,
+        welcomed: false
       });
     } catch (err) {
       next(err);
@@ -147,7 +157,8 @@ export function createAuthRouter(deps = {}) {
       res.json({
         token,
         handle: user.handle,
-        isStudyParticipant: user.isStudyParticipant
+        isStudyParticipant: user.isStudyParticipant,
+        welcomed: await welcomed(user.subjectId)
       });
     } catch (err) {
       next(err);
@@ -190,8 +201,34 @@ export function createAuthRouter(deps = {}) {
       res.json({
         handle: /** @type {any} */ (user).handle,
         isStudyParticipant: /** @type {any} */ (user).isStudyParticipant,
-        subjectId: req.auth.subjectId
+        subjectId: req.auth.subjectId,
+        welcomed: await welcomed(req.auth.subjectId)
       });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  /**
+   * POST /api/welcome
+   *
+   * The new recruit has read the welcome and started. A reread from the
+   * briefing is recorded too, marked as such, so the analysis can tell the
+   * first reading from a return visit.
+   */
+  router.post("/welcome", async (req, res, next) => {
+    try {
+      const { subjectId, sessionId, isStudyParticipant } = req.auth;
+      const reread = await welcomed(subjectId);
+      await append(subjectId, [{
+        schemaVersion: SCHEMA_VERSION,
+        subjectId, sessionId,
+        occurredAt: new Date(),
+        isStudyParticipant,
+        type: "welcome.completed",
+        payload: { durationMs: Math.max(0, Number(req.body?.durationMs) || 0), reread }
+      }]);
+      res.json({ welcomed: true });
     } catch (err) {
       next(err);
     }

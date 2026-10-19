@@ -27,7 +27,10 @@ export const EVENT_TYPES = /** @type {const} */ ([
   "lesson.practised",
   "lesson.revealed",
   "lesson.checked",
-  "lesson.completed"
+  "lesson.completed",
+  // The first-sign-in welcome. Recorded so it is shown once per account on any
+  // machine, and so time to first action can be split into its parts.
+  "welcome.completed"
 ]);
 
 /** @typedef {(typeof EVENT_TYPES)[number]} TelemetryEventType */

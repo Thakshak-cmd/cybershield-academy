@@ -26,9 +26,9 @@ const LESSON_TITLES = {
  * assignment screen is where it is chosen.
  *
  * @param {{ handle: string, onTakeTicket: () => void, onOpenCapstone: () => void,
- *           onOpenProgress: () => void }} props
+ *           onOpenProgress: () => void, onOpenWelcome?: () => void }} props
  */
-export function HomeScreen({ handle, onTakeTicket, onOpenCapstone, onOpenProgress }) {
+export function HomeScreen({ handle, onTakeTicket, onOpenCapstone, onOpenProgress, onOpenWelcome }) {
   const [data, setData] = useState(/** @type {any} */ (null));
   const [error, setError] = useState(/** @type {string|null} */ (null));
 
@@ -63,6 +63,9 @@ export function HomeScreen({ handle, onTakeTicket, onOpenCapstone, onOpenProgres
                   <span className="cmd__caret">▸</span>
                   Take the next ticket
                 </button>
+                {onOpenWelcome && (
+                  <button className="home__more briefing__howto" onClick={onOpenWelcome}>How it works</button>
+                )}
                 {capstoneCall && (
                   <button className="cmd pixel briefing__capstone" onClick={onOpenCapstone}>
                     <span className="cmd__caret">▸</span>

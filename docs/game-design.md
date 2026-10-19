@@ -21,6 +21,20 @@ Every decision below exists to give defensive work a dramatic beat.
 2. **Patch it.** Editor or guided fix, hints available.
 3. **Watch it bounce.** The same attack replays against the patched code and fails.
 
+## 1b. The welcome
+
+Added 19 Oct 2026, after a friend's test session. A new account went from signing up
+straight to a lesson with no sense of what the platform was, which felt overwhelming;
+separately, signing in kept whatever page the address bar held, so it could land
+someone in a lesson outright (now fixed: sign-in always starts at the briefing).
+
+A single screen, shown once per account and remembered on the server (so it holds on
+any machine): who you are (the newest engineer on Aurora's night shift), the three
+moves (learn, fix, grow), how a fix is judged (both suites must pass), and where help
+is (hints, the field manual). "How it works" on the briefing reopens it. A one-time
+tip above the suites on the first ticket shows where those two checks live. Everyone
+sees it, participants included, for one consistent flow.
+
 ## 1a. Instruction before practice: the briefing files
 
 Added 29 Sep 2026. Until then the platform taught only through feedback -- rule

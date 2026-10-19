@@ -261,6 +261,7 @@ export function ChallengeScreen() {
         </div>
 
         <aside className="stage__side">
+          {!verdict && <SuitesTip />}
           <Window
             title="Attack suite"
             tone={verdict ? (attacksRepelled === attacksTotal ? "secure" : "breach") : "default"}
@@ -459,5 +460,36 @@ function Verdict({ verdict, format }) {
         )}
       </div>
     </Window>
+  );
+}
+
+/**
+ * A one-time pointer to the two suites, on a learner's first ticket.
+ *
+ * The welcome explains them; this shows where they are, at the moment they
+ * matter. Remembered per account in this browser: it is a reading aid, not
+ * study data, and on a shared lab machine each participant's account still
+ * sees it once. Storage can be unavailable, in which case it simply shows.
+ */
+function SuitesTip() {
+  const key = `cybershield.tip.suites.${api.subject() ?? "guest"}`;
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(key) === "1"; } catch { return false; }
+  });
+  if (dismissed) return null;
+
+  function dismiss() {
+    try { localStorage.setItem(key, "1"); } catch { /* shows again next time; harmless */ }
+    setDismissed(true);
+  }
+
+  return (
+    <div className="tip" role="note">
+      <p className="tip__text">
+        <strong>Two checks, both must pass.</strong> The attack suite needs the attack to fail;
+        the functional suite needs the shop to keep working. They run when you submit.
+      </p>
+      <button className="tip__dismiss" onClick={dismiss}>Got it</button>
+    </div>
   );
 }

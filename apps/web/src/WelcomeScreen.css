@@ -1,0 +1,30 @@
+.welcome { max-width: 760px; margin: 0 auto; padding: 28px 20px 64px; }
+
+.welcome__intro { display: flex; gap: 18px; align-items: flex-start; margin-bottom: 22px; }
+.welcome__lead { margin: 0 0 6px; font-size: 17px; font-weight: 600; color: var(--window-title); }
+.welcome__text { margin: 0; font-size: 15.5px; line-height: 1.65; color: var(--ink); max-width: 60ch; }
+
+.welcome__steps { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 14px; }
+.welcome__step { display: flex; gap: 14px; align-items: flex-start; font-size: 15px; line-height: 1.55; color: var(--ink-2); }
+.welcome__step .icon { flex: 0 0 auto; color: var(--accent); margin-top: 2px; }
+.welcome__step strong { display: block; color: var(--ink); font-size: 15.5px; }
+
+.welcome__ticket {
+  padding: 14px 16px;
+  background: var(--code-bg);
+  border-left: 3px solid var(--secure);
+  margin-bottom: 18px;
+}
+.welcome__suites { display: grid; gap: 4px; margin: 8px 0; }
+.welcome__suites p { margin: 0; font-size: 15px; color: var(--ink); }
+.welcome__mark { color: var(--secure); }
+.welcome__note { margin: 0; font-size: 14px; color: var(--ink-2); }
+
+.welcome__help { margin: 0 0 20px; font-size: 14.5px; color: var(--ink-2); }
+
+.welcome__actions { display: flex; justify-content: flex-end; }
+.welcome__actions .cmd { width: auto; font-size: 15px; }
+
+@media (max-width: 560px) {
+  .welcome__intro { flex-direction: column; gap: 10px; }
+}

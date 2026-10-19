@@ -385,6 +385,12 @@ export const api = {
     return call("/api/auth/me");
   },
 
+  /** The welcome has been read. A second call is recorded as a reread. */
+  async welcome(durationMs) {
+    if (!(await this.connect())) return { welcomed: true };
+    return call("/api/welcome", { method: "POST", body: JSON.stringify({ durationMs }) });
+  },
+
   async logout() {
     // Best effort: the session-ended event matters for the engagement metrics,
     // but a failure here must not trap someone in a session they want to leave.
@@ -403,6 +409,17 @@ export const api = {
    * decides whether the appearance control is shown. A tampered claim changes the
    * palette and nothing else.
    */
+  /** The pseudonymous subject id from the token, or null. Never the handle. */
+  subject() {
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) return null;
+      return JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).sub ?? null;
+    } catch {
+      return null;
+    }
+  },
+
   isStudyParticipant() {
     try {
       const token = localStorage.getItem(TOKEN_KEY);

@@ -18,11 +18,11 @@ This is raw material, not prose. See [`plan.md`](plan.md) for where each piece g
 | Tiers | 8 beginner, 9 intermediate, 3 advanced | same |
 | Lessons | 3 (one per skill): theory, live demo, guided fix, 2-question check | `content/lessons.js` |
 | Validation rules | 26 AST rules, each tagged security or functional | `packages/validator/src/rules.js` |
-| Event types | 16 in the contract; 14 emitted (`challenge.abandoned`, `mastery.updated` are derivable and deliberately not stored) | `packages/shared/src/events.js`, `docs/telemetry-model.md` |
+| Event types | 17 in the contract; 15 emitted (`challenge.abandoned`, `mastery.updated` are derivable and deliberately not stored) | `packages/shared/src/events.js`, `docs/telemetry-model.md` |
 | Badges | 6 | `content/badges.js` |
 | Source lines (excl. tests) | web 5,509; API 2,304; validator 1,238; shared 536; ML 1,086 (BKT 604, analysis 318, service 164); study scripts 1,078; content 2,040 | `wc -l` |
 | Test lines | API 2,516; validator 541; ML 742 | same |
-| Automated tests | **502**: API 182, validator 208, web 10, integration (real MongoDB) 17, Python 85; plus a 31-check end-to-end smoke test | `npm test --workspaces`, `npm run test:integration`, `npm run ml:test`, `npm run smoke` |
+| Automated tests | **516**: API 196, validator 208, web 10, integration (real MongoDB) 17, Python 85; plus a 31-check end-to-end smoke test | `npm test --workspaces`, `npm run test:integration`, `npm run ml:test`, `npm run smoke` |
 | Commits | 34, 25 Aug – 4 Oct 2026 | `git log` |
 
 ## Timeline (from the commit history)
@@ -138,7 +138,7 @@ and set the priorities yourself. Each has a way to verify it.
 |---|---|---|---|
 | Validator: content | 195 | Every challenge: reference patch passes; vulnerable code fails; each wrong answer fails for a different reason; answers don't leak | `npm test -w @cybershield/validator` |
 | Validator: lessons | 13 | Guided fixes start failing and end passing; worked examples are not any ticket's answer; checks are well-formed | same |
-| API unit | 182 | Attempt logic, XP rules, auth, routes, gates, hints, badges, streaks, posture, study tooling, analysis | `npm test -w @cybershield/api` |
+| API unit | 196 | Attempt logic, XP rules, auth, routes, gates, hints, badges, streaks, posture, study tooling, analysis | `npm test -w @cybershield/api` |
 | Web | 10 | The briefing never claims anything the record doesn't show | `npm test -w @cybershield/web` |
 | Integration | 17 | Real MongoDB: atomic sequences, unique index, concurrent appends, privacy on disk, capstone completion | `npm run test:integration` |
 | Python | 85 | BKT model, policy (simulated learners), evaluation metrics, statistics checked against hand-worked values | `npm run ml:test` |
@@ -178,6 +178,7 @@ a test or check. Useful for §4.3 ("What bugs did you find and fix?") and §4.7.
 | 24 | Answering a check question dropped keyboard focus to the top of the page | Accessibility audit | Keyboard users lose their place | `37f5207` |
 | 25 | Results not announced to screen readers; pass/fail shown only by shape | Accessibility audit | Screen-reader users get no feedback | `37f5207` |
 | 26 | The model gated the capstone on SQLi alone and could serve it as an ordinary ticket | Checking the risk register's claims against the code | Skill tree showed it open while the API refused it; late in a session, a screen that cannot render it | `3521c14` |
+| 27 | Signing in kept the previous page, so a new user could land straight in a lesson; nothing explained the platform first | **User testing** (a friend's session, 19 Oct) | An overwhelming first experience | *this commit* |
 
 ## Code excerpts worth showing
 
@@ -254,7 +255,7 @@ Facts to report honestly in §3.1 and §3.9, and to declare on the title page:
   design (e.g. the palette and UI choices you made when asked; the lesson format;
   everyone-sees-the-briefing; the study design); review and acceptance of each
   increment; running and verifying it.
-- How correctness was checked independently of the assistant: 502 automated tests,
+- How correctness was checked independently of the assistant: 516 automated tests,
   type checking, end-to-end smoke tests, browser verification, an accessibility audit.
 
 APA 7 format for citing a generative AI tool (confirm against university guidance):

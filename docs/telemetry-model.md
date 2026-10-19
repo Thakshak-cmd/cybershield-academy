@@ -70,6 +70,7 @@ events remain interpretable rather than silently mis-parsed.
 | `lesson.revealed` | "Show me" after two tries | `lessonId` |
 | `lesson.checked` | A check question is answered | `questionId`, `choice`, `correct` |
 | `lesson.completed` | The lesson is filed | `durationMs`, `reread` |
+| `welcome.completed` | The first-sign-in welcome is read (or reread from the briefing) | `durationMs`, `reread` |
 
 Lesson events are never BKT observations. See game-design.md §1a.
 

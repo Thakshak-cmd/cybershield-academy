@@ -5,6 +5,7 @@ import { BossScreen } from "./BossScreen.jsx";
 import { AuthScreen } from "./AuthScreen.jsx";
 import { HomeScreen } from "./HomeScreen.jsx";
 import { ManualScreen } from "./ManualScreen.jsx";
+import { WelcomeScreen } from "./WelcomeScreen.jsx";
 import { Link, useRoute } from "./useRoute.jsx";
 import { PALETTES, usePalette } from "./usePalette.js";
 import { Icon } from "./components/Icon.jsx";
@@ -17,13 +18,14 @@ const SCREEN_TITLES = {
   "/assignment": "Assignment",
   "/manual": "Field manual",
   "/progress": "Progress",
-  "/boss": "The Aurora Breach"
+  "/boss": "The Aurora Breach",
+  "/welcome": "How it works"
 };
 
 export function App() {
   const [live, setLive] = useState(/** @type {boolean|null} */ (null));
   const [session, setSession] = useState(
-    /** @type {{ handle: string, isStudyParticipant: boolean }|null} */ (null)
+    /** @type {{ handle: string, isStudyParticipant: boolean, welcomed?: boolean }|null} */ (null)
   );
   const [ready, setReady] = useState(false);
   const [sound, setSound] = useState(soundEnabled);
@@ -42,7 +44,7 @@ export function App() {
       // Offline means fixture data and no real accounts, so the sign-in screen
       // would be a dead end -- there is nothing to sign in to.
       if (!isLive) {
-        setSession({ handle: "guest", isStudyParticipant: false });
+        setSession({ handle: "guest", isStudyParticipant: false, welcomed: true });
       } else if (api.hasToken()) {
         try {
           setSession(await api.me());
@@ -59,15 +61,30 @@ export function App() {
   // a navigation landed and the browser's history and tabs say something useful.
   // Focus moves to the new screen for the same reason; without it a screen
   // reader stays on the link that was clicked and the change goes unannounced.
+  // A new account sees the welcome before anything else, wherever the address
+  // bar points. Known only to the server, so it holds on any machine.
+  const needsWelcome = !!session && session.welcomed === false;
+
   useEffect(() => {
-    document.title = `${session ? (SCREEN_TITLES[path] ?? "Briefing") : "Sign in"} · CyberShield Academy`;
+    document.title = `${!session ? "Sign in" : needsWelcome ? "Welcome" : (SCREEN_TITLES[path] ?? "Briefing")} · CyberShield Academy`;
     if (firstRoute.current) { firstRoute.current = false; return; }
     main.current?.focus({ preventScroll: true });
-  }, [path, !!session]);
+  }, [path, !!session, needsWelcome]);
 
   async function signOut() {
     await api.logout();
     setSession(null);
+    navigate("/");
+  }
+
+  /**
+   * Signing in always starts at the briefing. It used to keep whatever the
+   * address bar held, so signing out on the assignment screen -- or following
+   * a link to it -- dropped the next sign-in straight into a lesson.
+   */
+  function signedIn(result) {
+    setSession(result);
+    navigate("/");
   }
 
   if (!ready) return <div className="boot label">Starting up…</div>;
@@ -81,7 +98,7 @@ export function App() {
           {session ? `Aurora Store · ${session.handle}` : "Aurora Store · Blue Team"}
         </span>
 
-        {session && (
+        {session && !needsWelcome && (
           <nav className="chrome__nav" aria-label="Sections">
             <Link to="/" navigate={navigate}
                   className={path === "/" ? "navlink navlink--on" : "navlink"}>
@@ -158,9 +175,16 @@ export function App() {
       {/* Keyed on the route so each screen enters rather than swapping in place.
           One short movement, not a choreography -- navigation happens constantly
           and anything longer becomes a delay. */}
-      <main className="route" key={session ? path : "signin"} ref={main} tabIndex={-1}>
+      <main className="route" key={!session ? "signin" : needsWelcome ? "welcome" : path} ref={main} tabIndex={-1}>
         {!session ? (
-          <AuthScreen onAuthenticated={setSession} />
+          <AuthScreen onAuthenticated={signedIn} />
+        ) : needsWelcome ? (
+          <WelcomeScreen
+            handle={session.handle}
+            onDone={() => { setSession({ ...session, welcomed: true }); navigate("/"); }}
+          />
+        ) : path === "/welcome" ? (
+          <WelcomeScreen handle={session.handle} reread onDone={() => navigate("/")} />
         ) : path === "/assignment" ? (
           <ChallengeScreen />
         ) : path === "/manual" ? (
@@ -177,6 +201,7 @@ export function App() {
             onTakeTicket={() => navigate("/assignment")}
             onOpenCapstone={() => navigate("/boss")}
             onOpenProgress={() => navigate("/progress")}
+            onOpenWelcome={() => navigate("/welcome")}
           />
         )}
       </main>

@@ -200,3 +200,24 @@
 .consequence__text { margin: 0; font-size: 13px; color: var(--breach); line-height: 1.55; }
 .consequence__hint { display: block; color: var(--muted); margin-top: 2px; }
 
+
+/* ---------- first-ticket tip ---------- */
+
+.tip {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--control-edge);
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+}
+.tip__text { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--ink); }
+.tip__dismiss {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--control-edge);
+  color: var(--ink);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.tip__dismiss:hover { border-color: var(--window-edge); }
