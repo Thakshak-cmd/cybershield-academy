@@ -59,6 +59,20 @@ export function createShareGate({ password, secret = randomBytes(32), now = Date
     return entry.count > maxAttempts;
   }
 
+  /** @param {unknown} value */
+  function matches(value) {
+    return timingSafeEqual(digest(String(value ?? "")), expected);
+  }
+
+  /** Start a session for this browser. */
+  function admit(req, res) {
+    const expiry = now() + SESSION_MS;
+    const secure = req.headers["x-forwarded-proto"] === "https" || String(req.headers["cf-visitor"] ?? "").includes("https");
+    res.cookie(COOKIE, `${expiry}.${sign(expiry)}`, {
+      httpOnly: true, sameSite: "lax", secure, maxAge: SESSION_MS, path: "/"
+    });
+  }
+
   /**
    * @param {import("express").Request} req
    * @param {import("express").Response} res
@@ -79,18 +93,31 @@ export function createShareGate({ password, secret = randomBytes(32), now = Date
         if (limited(clientOf(req))) {
           return res.status(429).type("html").send(page("Too many attempts. Wait fifteen minutes and try again."));
         }
-        const given = digest(String(req.body?.password ?? ""));
-        if (!timingSafeEqual(given, expected)) {
+        if (!matches(req.body?.password)) {
           return res.status(401).type("html").send(page("That password isn't right."));
         }
-        const expiry = now() + SESSION_MS;
-        const secure = req.headers["x-forwarded-proto"] === "https" || String(req.headers["cf-visitor"] ?? "").includes("https");
-        res.cookie(COOKIE, `${expiry}.${sign(expiry)}`, {
-          httpOnly: true, sameSite: "lax", secure, maxAge: SESSION_MS, path: "/"
-        });
+        admit(req, res);
         return res.redirect(303, "/");
       }
       return res.sendStatus(405);
+    }
+
+    // The link itself can carry the key, so a tester gets one link and no
+    // password to type. It is swapped for the session cookie at once and the
+    // redirect drops it from the address bar, so it is not left on screen or
+    // in the page the tester bookmarks.
+    if (req.method === "GET" && typeof req.query.key === "string") {
+      if (limited(clientOf(req))) {
+        return res.status(429).type("html").send(page("Too many attempts. Wait fifteen minutes and try again."));
+      }
+      if (!matches(req.query.key)) {
+        return res.status(401).type("html").send(page(
+          "That link has expired or isn't right. Ask for a new one, or enter the password if you have it."));
+      }
+      admit(req, res);
+      const rest = new URLSearchParams(/** @type {Record<string, string>} */ (req.query));
+      rest.delete("key");
+      return res.redirect(303, req.path + (rest.size ? `?${rest}` : ""));
     }
 
     if (valid(readCookie(req.headers.cookie, COOKIE))) return next();

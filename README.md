@@ -54,17 +54,19 @@ study session. Your IP must be on the Atlas Network Access list.
 npm run share
 ```
 
-Builds the site, starts everything, and opens a Cloudflare tunnel. It prints a
-random `https://….trycloudflare.com` link and a password: both are needed to get
-in, and both change every run. Your Mac has to stay on and running it. Ctrl+C
-stops it.
+Builds the site, starts everything, opens a Cloudflare tunnel, and prints the two
+links to send a tester: **Play** (the platform, with its access key built in, so
+there is no password to type) and **Feedback** (your Google Form). Ctrl+C stops it;
+the play link changes every run. Your Mac has to stay on and running it.
 
-- First time only: `brew install cloudflared`.
-- Uses a throwaway database, so visitors' accounts are not kept. Add `-- --atlas`
+- First time only: `brew install cloudflared`, and save your form's link once with
+  `npm run share -- --form https://forms.gle/...` (kept in `share.config.json`,
+  which is gitignored).
+- Uses a throwaway database, so testers' accounts are not kept. Add `-- --atlas`
   to use the real one in `.env.local`.
-- `npm run share -- --local` does everything but the tunnel, so you can try the
-  password page on `http://localhost:4173` first.
-- Set `SHARE_PASSWORD` to choose the password instead of generating one.
+- `npm run share -- --local` does everything but the tunnel, to try it first.
+- The form itself: `docs/playtest/create-playtest-form.gs` builds it in your Google
+  account (instructions at the top of the file).
 
 ## Running the study
 

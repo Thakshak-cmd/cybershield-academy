@@ -118,4 +118,32 @@ describe("the share gate", () => {
   test("refuses a weak password at start-up", () => {
     assert.throws(() => createShareGate({ password: "short" }), /at least 8/);
   });
+
+  test("a link carrying the key signs the browser in and drops the key from the address", async () => {
+    const { base, close } = await gated();
+    const res = await fetch(base + "/assignment?key=correct-horse&from=email", { redirect: "manual" });
+    close();
+    assert.equal(res.status, 303);
+    assert.equal(res.headers.get("location"), "/assignment?from=email");
+    assert.match(header(res, "set-cookie"), /cs_share=/);
+  });
+
+  test("a wrong or stale key is refused, with a way forward", async () => {
+    const { base, close } = await gated();
+    const res = await fetch(base + "/?key=yesterdays-key", { redirect: "manual" });
+    const page = await res.text();
+    close();
+    assert.equal(res.status, 401);
+    assert.equal(res.headers.get("set-cookie"), null);
+    assert.match(page, /expired/);
+  });
+
+  test("guessing keys in links is rate-limited too", async () => {
+    const { base, close } = await gated({ maxAttempts: 2 });
+    const who = { "cf-connecting-ip": "203.0.113.20" };
+    for (let i = 0; i < 2; i++) await fetch(base + `/?key=guess${i}`, { headers: who, redirect: "manual" });
+    const blocked = await fetch(base + "/?key=correct-horse", { headers: who, redirect: "manual" });
+    close();
+    assert.equal(blocked.status, 429);
+  });
 });

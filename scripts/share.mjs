@@ -7,6 +7,10 @@
  *   npm run share              throwaway database (a demo; nothing kept)
  *   npm run share -- --atlas   the real database in .env.local
  *   npm run share -- --local   everything but the tunnel: check it yourself first
+ *   npm run share -- --form <link>   remember your feedback form's link (once)
+ *
+ * It prints the two links to send a tester: the platform, with its access key
+ * built in so there is no password to type, and your feedback form.
  *
  * Builds the website, starts the BKT service and the share server (website and
  * API on one port, behind a password), then opens a Cloudflare quick tunnel and
@@ -21,7 +25,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import { randomInt } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,16 +37,27 @@ const ENV_FILE = join(ROOT, ".env.local");
 const UVICORN = join(ROOT, "services/ml/.venv/bin/uvicorn");
 const PORT = 4173;
 const ML_PORT = 8811;
+// Remembers the feedback form's link between runs. Gitignored: it is yours,
+// not the repository's.
+const CONFIG = join(ROOT, "share.config.json");
 
 const tty = process.stdout.isTTY;
 const c = (code, s) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
 const bold = s => c("1", s), dim = s => c("2", s), red = s => c("31", s), green = s => c("32", s);
 
-/** Readable, unambiguous: no 0/O, 1/l/I. */
+/**
+ * Readable, unambiguous (no 0/O, 1/l/I), and long enough to travel in a link:
+ * five groups of four from 31 characters is about 99 bits, so the link itself
+ * can be the credential.
+ */
 function generatePassword() {
   const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
   const group = () => Array.from({ length: 4 }, () => alphabet[randomInt(alphabet.length)]).join("");
-  return `${group()}-${group()}-${group()}`;
+  return Array.from({ length: 5 }, group).join("-");
+}
+
+function readConfig() {
+  try { return JSON.parse(readFileSync(CONFIG, "utf8")); } catch { return {}; }
 }
 
 function fail(message) {
@@ -75,6 +90,19 @@ async function waitFor(url, seconds) {
   }
   return false;
 }
+
+// ------------------------------------------------------------------ form link
+
+const formArg = process.argv.indexOf("--form");
+if (formArg > 0) {
+  const link = process.argv[formArg + 1] ?? "";
+  if (!/^https:\/\/(docs\.google\.com\/forms\/|forms\.gle\/)/.test(link)) {
+    fail("That doesn't look like a Google Form link. Use the link testers open, e.g.\n\n  npm run share -- --form https://forms.gle/...\n");
+  }
+  writeFileSync(CONFIG, JSON.stringify({ ...readConfig(), feedbackForm: link }, null, 2) + "\n");
+  console.log(green("Saved your feedback form. It will be printed with the link from now on."));
+}
+const feedbackForm = readConfig().feedbackForm ?? null;
 
 // ------------------------------------------------------------------ checks
 
@@ -161,7 +189,8 @@ if (!(await waitFor(`http://localhost:${PORT}/api/health`, 90))) {
 
 if (LOCAL) {
   console.log(`
-  ${bold("Local check")}  ${green(`http://localhost:${PORT}`)}   ${bold("Password")} ${green(password)}
+  ${bold("Local check")}  ${green(`http://localhost:${PORT}/?key=${password}`)}
+  ${bold("Feedback")}     ${feedbackForm ? green(feedbackForm) : dim("not set: npm run share -- --form <your form link>")}
   ${dim("No tunnel: only this Mac can open it. Ctrl+C stops it.")}
 `);
   await new Promise(() => {});
@@ -189,16 +218,17 @@ if (!url) {
 // rather than letting the first visitor meet an error page.
 const live = await waitFor(`${url}/api/health`, 30);
 
-const width = Math.max(url.length, 40) + 14;
-const line = "─".repeat(width);
+const playLink = `${url}/?key=${password}`;
+const line = "─".repeat(Math.max(playLink.length, 40) + 10);
 console.log(`
+${bold("Send your tester these two links:")}
 ${line}
-  ${bold("Link")}       ${green(url)}
-  ${bold("Password")}   ${green(password)}
+  ${bold("1. Play")}       ${green(playLink)}
+  ${bold("2. Feedback")}   ${feedbackForm ? green(feedbackForm) : red("not set: run  npm run share -- --form <your form link>  once")}
 ${line}
-  ${ATLAS ? red("Real database: visitors' accounts are stored in Atlas.") : dim("Throwaway database: nothing is kept after you stop.")}
-  ${ATLAS ? "" : dim("Enrolment code for a study-style account: AURORA-2026")}
+  ${ATLAS ? red("Real database: testers' accounts are stored in Atlas.") : dim("Throwaway database: nothing is kept after you stop.")}
   ${live ? "" : dim("The link can take a minute to start working.")}
-  Send the link and the password separately if you can.
+  ${dim("The play link changes every run; the feedback link stays the same.")}
+  ${dim("If someone ends up on the password page, the password is: " + password)}
   Keep this window open and your Mac awake. ${bold("Ctrl+C")} stops it.
 `.replace(/\n {2}\n/g, "\n"));
