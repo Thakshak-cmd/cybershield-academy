@@ -65,8 +65,6 @@ the play link changes every run. Your Mac has to stay on and running it.
 - Uses a throwaway database, so testers' accounts are not kept. Add `-- --atlas`
   to use the real one in `.env.local`.
 - `npm run share -- --local` does everything but the tunnel, to try it first.
-- The form itself: `docs/playtest/create-playtest-form.gs` builds it in your Google
-  account (instructions at the top of the file).
 
 ## Running the study
 
