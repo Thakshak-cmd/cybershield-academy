@@ -50,8 +50,6 @@ services/ml/.venv/
 .mongodb-binaries/
 apps/web/dist/
 
-# the author's working dissertation document: theirs to version, not the repo's
-docs/dissertation/*.docx
 
 # npm run share remembers your feedback form here
 share.config.json
