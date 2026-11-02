@@ -35,6 +35,23 @@ is (hints, the field manual). "How it works" on the briefing reopens it. A one-t
 tip above the suites on the first ticket shows where those two checks live. Everyone
 sees it, participants included, for one consistent flow.
 
+## 1c. Changes from playtesting (2 Nov 2026)
+
+- **Pacing.** A new learner met three lessons in about ten minutes (lesson, drill,
+  lesson, drill, lesson). A break screen now comes before the second and third: what
+  has been covered, what is next, and "start when ready". The ticket order is
+  unchanged.
+- **Theory for complete beginners.** Each lesson opens with "Words to know" (every
+  technical term in plain English), uses short sections with an everyday comparison,
+  and ends with one sentence to remember. Theory is capped at about 300 words.
+- **Replay.** Reopening a filed lesson now lets the guided fix be practised again.
+- **XP.** Every lesson pays the same 50 XP the first time, nothing on a replay. Every
+  ticket pays by its kind and difficulty only, never its skill, and a content test
+  enforces the table (it caught two drills paying the wrong hinted rate). Skills
+  still differ in total XP, because request forgery has fewer tickets.
+- **A thank-you** after the last lesson, from the author. Not shown to study
+  participants, where mid-session it would read as "you're finished".
+
 ## 1a. Instruction before practice: the briefing files
 
 Added 29 Sep 2026. Until then the platform taught only through feedback -- rule

@@ -51,6 +51,16 @@ describe("lessons", () => {
         }
       });
 
+      test("defines its terms and ends with one thing to remember", () => {
+        // Written for people who have never coded: every lesson defines its
+        // technical words up front and closes on a single takeaway.
+        assert.ok(lesson.keyTerms.length >= 3);
+        for (const t of lesson.keyTerms) assert.ok(t.term && t.meaning.length > 20, t.term);
+        assert.ok(lesson.takeaway.length > 20);
+        const words = lesson.theory.flatMap(s => s.paragraphs).join(" ").split(/\s+/).length;
+        assert.ok(words <= 400, `theory is ${words} words; keep it a short read`);
+      });
+
       test("has theory, a demo and a guided fix", () => {
         assert.ok(lesson.theory.length >= 2);
         assert.equal(lesson.demo, lesson.skill);

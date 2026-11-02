@@ -361,3 +361,31 @@ describe("review-the-fix challenges", () => {
     });
   }
 });
+
+describe("XP is the same for the same kind of ticket", () => {
+  // Found in playtesting as "XP not equal across". Pay depends only on what a
+  // ticket asks (its format) and how hard it is (its tier), never on its skill,
+  // so no skill's tickets are worth more for the same work.
+  // [first attempt, retry]; a hinted solve pays half the first-attempt rate.
+  const XP_BY_KIND = {
+    spot:   { beginner: [30, 10], intermediate: [45, 15] },
+    patch:  { beginner: [80, 25], intermediate: [120, 40], advanced: [160, 50] },
+    review: { beginner: [70, 25], intermediate: [90, 30] },
+    harden: { intermediate: [110, 35] },
+    boss:   { advanced: [400, 120] }
+  };
+  const all = readdirSync(new URL("../../../content/challenges/", import.meta.url))
+    .filter(f => f.endsWith(".json"))
+    .map(f => JSON.parse(readFileSync(new URL(`../../../content/challenges/${f}`, import.meta.url), "utf8")));
+
+  for (const c of all) {
+    test(`${c.id} pays the rate for a ${c.tier} ${c.format ?? "patch"}`, () => {
+      const kind = XP_BY_KIND[c.format ?? "patch"]?.[c.tier];
+      assert.ok(kind, `no XP rate for ${c.format ?? "patch"} at ${c.tier}`);
+      const [first, retry] = kind;
+      assert.equal(c.xp.firstAttempt, first);
+      assert.equal(c.xp.withHints, Math.floor(first / 2), "a hinted solve pays half");
+      assert.equal(c.xp.retry, retry);
+    });
+  }
+});

@@ -84,7 +84,7 @@ export const EVENT_TYPES = /** @type {const} */ ([
 /**
  * @typedef {object} XpAwardedPayload
  * @property {number} amount
- * @property {"completion"|"first-attempt-bonus"|"streak"} reason
+ * @property {"completion"|"first-attempt-bonus"|"streak"|"lesson"} reason
  *   Deliberately no speed-based reason: time-on-task is an engagement metric, so
  *   paying XP for elapsed time would confound it. See deviations D5.
  * @property {number} runningTotal

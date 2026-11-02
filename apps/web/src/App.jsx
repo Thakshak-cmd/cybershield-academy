@@ -186,7 +186,7 @@ export function App() {
         ) : path === "/welcome" ? (
           <WelcomeScreen handle={session.handle} reread onDone={() => navigate("/")} />
         ) : path === "/assignment" ? (
-          <ChallengeScreen />
+          <ChallengeScreen onLeave={() => navigate("/")} />
         ) : path === "/manual" ? (
           <ManualScreen />
         ) : path === "/progress" ? (

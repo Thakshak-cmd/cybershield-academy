@@ -27,5 +27,5 @@
     "What happens when the session has no token yet? Trace that path.",
     "A missing expected value should fail closed, not open."
   ],
-  "xp": { "firstAttempt": 45, "withHints": 20, "retry": 15 }
+  "xp": { "firstAttempt": 45, "withHints": 22, "retry": 15 }
 }

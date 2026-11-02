@@ -59,7 +59,7 @@ export function ManualScreen() {
               </span>
               {l.completed ? (
                 <button className="cmd pixel manual__open" onClick={() => setOpen(l.id)}>
-                  <span className="cmd__caret">▸</span> Reread
+                  <span className="cmd__caret">▸</span> Replay
                 </button>
               ) : (
                 <Icon name="lock" size={16} className="manual__lock" label="Not yet filed" />

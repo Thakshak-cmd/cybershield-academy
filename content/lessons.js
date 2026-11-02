@@ -30,7 +30,9 @@
  * @property {string} title
  * @property {string} from            the character handing the briefing over
  * @property {string} opener          their first line, in character
+ * @property {{ term: string, meaning: string }[]} keyTerms   plain-English definitions, shown first
  * @property {{ heading: string, paragraphs: string[], code?: string }[]} theory
+ * @property {string} takeaway   the one thing to remember, in a sentence
  * @property {"sqli"|"xss"|"csrf"} demo
  * @property {{ brief: string, file: string, start: string, solution: string,
  *              steps: string[], meta: Record<string, any>, rules: string[] }} guided
@@ -46,31 +48,58 @@ export const LESSONS = [
     title: "Injected queries",
     from: "Dan (QA)",
     opener: "Before you touch anything that talks to the database, here's what actually goes wrong.",
-    theory: [
+    keyTerms: [
       {
-        heading: "Data and code end up in one string",
-        paragraphs: [
-          "A SQL query is a small program. When the route builds it by pasting the customer's input into the text, the database receives one string and cannot tell which characters the developer wrote and which the customer typed.",
-          "So a quote in the input closes the string literal early, and whatever follows it is read as SQL. The customer has stopped supplying a value and started writing part of the query."
-        ],
-        code: "const sql = `SELECT id, name FROM products WHERE name LIKE '%${term}%'`;"
+        "term": "Database",
+        "meaning": "Where a website keeps its information, such as products, orders and customer accounts."
       },
       {
-        heading: "Why cleaning the input isn't the fix",
-        paragraphs: [
-          "Stripping quotes breaks honest input: a customer searching for O'Brien's Guide gets nothing. It also misses places with no quotes to strip at all, like a numeric id or a column name.",
-          "Any fix that tries to predict dangerous characters is guessing at the database's grammar. The reliable fix never lets input near the grammar in the first place."
+        "term": "Query",
+        "meaning": "A question the website asks its database, like \"find products called laptop\". Queries are written in a language called SQL (say \"sequel\")."
+      },
+      {
+        "term": "String",
+        "meaning": "A piece of text in code. It sits between quote marks, like 'laptop'."
+      },
+      {
+        "term": "Placeholder",
+        "meaning": "A ? in a query that marks where a value will go. The value itself is handed over separately."
+      }
+    ],
+    theory: [
+      {
+        "heading": "How a search box talks to the database",
+        "paragraphs": [
+          "When you search Aurora's shop for \"laptop\", the website asks its database a question: find every product whose name contains \"laptop\". That question is called a query.",
+          "The website builds the query by slotting whatever you typed into the middle of a line of SQL. In the code below, ${term} means \"put the customer's search here\"."
+        ],
+        "code": "const sql = `SELECT id, name FROM products WHERE name LIKE '%${term}%'`;"
+      },
+      {
+        "heading": "Where it goes wrong",
+        "paragraphs": [
+          "The quote marks around the search tell the database \"this part is just text\". But a customer can type a quote mark too. When they do, the database thinks the text has ended, and reads whatever comes next as instructions.",
+          "Think of a paper form where someone writes in the name box: \"Bob. Also, give Bob a refund.\" A clerk who can't tell the box's contents from the form's own wording might follow that extra instruction. That is SQL injection: typing instructions where only information should go."
         ]
       },
       {
-        heading: "The fix: parameterised queries",
-        paragraphs: [
-          "Write the query with a placeholder, ?, where the value goes, and pass the value separately. The driver sends it to the database as data, so it can never become syntax, whatever it contains.",
-          "Placeholders stand for values only. Table names, column names and sort direction can't be placeholders; for those, choose from a fixed list of allowed options. And the database account should only be able to do what the app needs, so a mistake anywhere costs less."
+        "heading": "Why deleting quote marks doesn't fix it",
+        "paragraphs": [
+          "An obvious idea is to remove quote marks from whatever customers type. But honest customers need them: a search for O'Brien's Guide would find nothing.",
+          "And some parts of a query have no quote marks at all, such as a product number, so there is nothing to remove. Guessing which characters are dangerous is a losing game."
+        ]
+      },
+      {
+        "heading": "The fix: keep the customer's input separate",
+        "paragraphs": [
+          "Write the query with a ? where the customer's input goes, then hand the input over separately. The database always treats it as a value to look for, never as instructions, whatever it contains, quote marks included.",
+          "One rule to remember: a ? can only stand in for a value, like a search word or an id. It can't stand in for part of the query's structure, such as a column name to sort by. Those must be picked from a fixed list of allowed names.",
+          "As an extra layer of protection, the database login the website uses should only be allowed to do what the website needs."
         ],
-        code: "const sql = 'SELECT id, name FROM products WHERE name LIKE ?';\nconst rows = await db.query(sql, [`%${term}%`]);"
+        "code": "const sql = 'SELECT id, name FROM products WHERE name LIKE ?';\nconst rows = await db.query(sql, [`%${term}%`]);"
       }
     ],
+    takeaway: "Never paste what a customer typed into a query. Put a ? there and pass their input separately.",
     demo: "sqli",
     guided: {
       brief: "The product page looks items up by id, and the id comes straight from the URL. Marcus has already swapped the value for a placeholder. Finish the fix: the query still isn't being given the id.",
@@ -142,31 +171,57 @@ export const LESSONS = [
     title: "Injected scripts",
     from: "Priya (Support)",
     opener: "Customers type things into Aurora all day. Here's how some of that ends up running in other people's browsers.",
+    keyTerms: [
+      {
+        "term": "Browser",
+        "meaning": "The program you view websites in, such as Chrome, Safari or Firefox."
+      },
+      {
+        "term": "HTML",
+        "meaning": "The code a browser reads to build a web page, like <b>bold</b> for bold text or <img> for a picture."
+      },
+      {
+        "term": "Script",
+        "meaning": "A small program that runs inside a web page, in the visitor's browser, acting as that visitor."
+      },
+      {
+        "term": "innerHTML / textContent",
+        "meaning": "Two ways a website can put text onto a page: innerHTML treats it as HTML to build; textContent shows it as plain text."
+      }
+    ],
     theory: [
       {
-        heading: "The page is code too",
-        paragraphs: [
-          "HTML isn't just text to the browser; it's instructions. Setting innerHTML asks the browser to parse a string as markup, so a tag in a customer's review becomes a real element on the page.",
-          "Some elements run script. An image with an onerror attribute runs that attribute as JavaScript when the image fails to load, inside the page of whoever is reading the review, signed in as them."
-        ],
-        code: "note.innerHTML = order.deliveryNote;"
+        "heading": "Web pages are built from HTML",
+        "paragraphs": [
+          "A web page arrives in your browser as HTML: instructions such as \"make this bold\" or \"show a picture here\". The browser reads them and builds the page you see.",
+          "Some HTML can run scripts. A script runs inside the page as the person looking at it, with their access: if they are signed in, so is the script."
+        ]
       },
       {
-        heading: "Put text in as text",
-        paragraphs: [
-          "textContent inserts characters exactly as they are. Nothing is parsed, so a < is shown as a <, not the start of a tag. The fix belongs where data meets the page, the sink, not somewhere upstream.",
-          "Removing <script> tags doesn't work: there are many other ways to run script, and the browser's parser is more forgiving than any filter."
+        "heading": "Where it goes wrong",
+        "paragraphs": [
+          "Aurora shows customers' reviews and delivery notes on other people's screens. If the website puts that text on the page with innerHTML, it is telling the browser \"treat this as HTML and build it\".",
+          "So if a customer types HTML into their note, the browser builds it. If that HTML runs a script, the script runs for everyone who views the note, signed in as them. That is cross-site scripting, or XSS."
         ],
-        code: "note.textContent = order.deliveryNote;"
+        "code": "note.innerHTML = order.deliveryNote;"
       },
       {
-        heading: "More than one layer",
-        paragraphs: [
-          "Some places need more than textContent. A link's href can hold a javascript: URL, which runs when clicked, so only allow http and https there.",
-          "A Content Security Policy is the second line: it tells the browser which scripts the site actually ships, so an injected one that slips through has nowhere to run."
+        "heading": "The fix: put text on the page as text",
+        "paragraphs": [
+          "Use textContent instead. It shows the customer's words exactly as typed: a < appears as a < character, and nothing gets built or run.",
+          "Make the change on the exact line where the text goes onto the page. Trying to delete <script> tags from the text doesn't work, because many other kinds of HTML can run scripts too."
+        ],
+        "code": "note.textContent = order.deliveryNote;"
+      },
+      {
+        "heading": "Links need one more check",
+        "paragraphs": [
+          "A link's address can start with javascript: instead of https:, and clicking it runs code. So when a link is built from something a customer typed, only allow addresses that start with http: or https:.",
+          "As a backup, a setting called a Content Security Policy tells the browser which scripts the website really uses, so an injected one has nowhere to run."
         ]
       }
     ],
+    takeaway: "Customer text goes onto the page with textContent, never innerHTML.",
     demo: "xss",
     guided: {
       brief: "The account page greets customers by the display name they chose. Priya flagged that a name can contain markup. Marcus left a note on the line; make the name go in as text.",
@@ -232,30 +287,55 @@ export const LESSONS = [
     title: "Forged requests",
     from: "Marcus (Incident Response)",
     opener: "This one doesn't need a single malicious character in Aurora's code. It uses the browser's own good manners.",
+    keyTerms: [
+      {
+        "term": "Session",
+        "meaning": "After you sign in, the website remembers you for a while. That remembering is your session."
+      },
+      {
+        "term": "Cookie",
+        "meaning": "A small note a website stores in your browser. Aurora's session cookie is how it knows the browser belongs to you."
+      },
+      {
+        "term": "Request",
+        "meaning": "Each time your browser asks a website to do something: show a page, or change your email address."
+      },
+      {
+        "term": "CSRF token",
+        "meaning": "A secret, random code Aurora puts into its own forms, so it can tell its own forms apart from anyone else's."
+      }
+    ],
     theory: [
       {
-        heading: "The browser sends the cookie for you",
-        paragraphs: [
-          "When a signed-in customer's browser makes a request to Aurora, it attaches Aurora's session cookie automatically, even when another site started the request. A hidden form on a page they happened to visit can post to Aurora's account routes.",
-          "Aurora sees a valid session and does what it's asked: changes the email address, moves the payout account. The customer never clicked anything on Aurora."
+        "heading": "Your browser vouches for you automatically",
+        "paragraphs": [
+          "When you are signed in to Aurora, your browser holds Aurora's session cookie. Every time your browser sends a request to Aurora, it attaches that cookie automatically. That is what keeps you signed in as you move around the site."
         ]
       },
       {
-        heading: "Prove the request came from Aurora's own page",
-        paragraphs: [
-          "A CSRF token is a secret, random value Aurora puts in its own forms and remembers in the session. Another site can make the browser send a request, but it can't read Aurora's pages, so it can't learn the token to include.",
-          "Every request that changes something must carry a token that matches, and a missing token must be rejected too. Checking only when one is present lets the forged request, which has none, straight through."
-        ],
-        code: "if (csrfToken !== req.session.csrfToken) {\n  return res.status(403).json({ error: 'Invalid request token.' });\n}"
+        "heading": "Where it goes wrong",
+        "paragraphs": [
+          "The browser attaches the cookie even when a different website started the request. Imagine you are signed in to Aurora and you open a page from a stranger's email. That page can contain a hidden form that sends Aurora a request: \"change this account's email address\".",
+          "Your browser adds your cookie, Aurora sees a signed-in customer, and makes the change. You never clicked anything on Aurora. This is cross-site request forgery, or CSRF: another website forging a request in your name."
+        ]
       },
       {
-        heading: "A second layer: SameSite cookies",
-        paragraphs: [
-          "Marking the session cookie SameSite=Lax tells the browser not to attach it to cross-site form posts at all. Strict goes further but also drops the cookie when a customer follows a link from an email, which signs them out.",
-          "And a GET request should never change anything. Links, images and prefetching all make GETs without asking."
+        "heading": "The fix: a secret the other website can't know",
+        "paragraphs": [
+          "Aurora puts a secret, random code, a CSRF token, into its own forms, and remembers it in your session. When a request arrives, Aurora checks that the code matches.",
+          "The stranger's page can make your browser send a request, but it can't read Aurora's pages, so it can never learn the code. Requests without the right code are refused, and that includes requests with no code at all."
+        ],
+        "code": "if (csrfToken !== req.session.csrfToken) {\n  return res.status(403).json({ error: 'Invalid request token.' });\n}"
+      },
+      {
+        "heading": "Two extra layers",
+        "paragraphs": [
+          "Marking the session cookie SameSite=Lax tells the browser not to send it with forms posted from other websites at all.",
+          "And a request that only fetches a page (called a GET request) should never change anything, because links and images make those requests all the time."
         ]
       }
     ],
+    takeaway: "Every request that changes something must carry Aurora's secret token, and a missing token counts as a wrong one.",
     demo: "csrf",
     guided: {
       brief: "The newsletter toggle changes a customer's settings, so another site could flip it. Marcus already reads the token from the form. Finish the fix: refuse the request unless it matches the one in the session.",

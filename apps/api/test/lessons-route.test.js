@@ -27,7 +27,8 @@ async function lessonApp({ done = [] } = {}) {
       };
     },
     loadChecked: async (_s, id) => [...new Set(log.filter(e => e.type === "lesson.checked" && e.payload.lessonId === id)
-                                                   .map(e => e.payload.questionId))]
+                                                   .map(e => e.payload.questionId))],
+    addXp: async (_s, amount) => amount
   }));
   const srv = app.listen(0);
   await new Promise(r => srv.once("listening", r));
@@ -109,14 +110,20 @@ describe("lesson routes", () => {
     const done = log.find(e => e.type === "lesson.completed");
     assert.equal(done.payload.reread, false);
     assert.equal(done.payload.durationMs, 240000);
+    assert.equal((await filed.json()).xpAwarded, 50);
+    const xp = log.filter(e => e.type === "xp.awarded");
+    assert.deepEqual(xp.map(e => [e.payload.amount, e.payload.reason]), [[50, "lesson"]]);
   });
 
-  test("a reread can be filed straight away, and says it was a reread", async () => {
+  test("a replay can be filed straight away, says so, and earns no XP", async () => {
     const { post, log, close } = await lessonApp({ done: ["lesson-sqli"] });
     const res = await post("/lesson-sqli/complete");
+    const body = await res.json();
     close();
     assert.equal(res.status, 200);
     assert.equal(log.find(e => e.type === "lesson.completed").payload.reread, true);
+    assert.equal(body.xpAwarded, 0);
+    assert.equal(log.filter(e => e.type === "xp.awarded").length, 0, "lessons cannot be farmed");
   });
 
   test("the manual lists every lesson with whether it is filed", async () => {

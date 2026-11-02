@@ -16,7 +16,8 @@ const STEPS = ["Theory", "See it", "Guided fix", "Check"];
  * The server holds the answers and decides when the lesson counts as finished,
  * so the interface cannot be the thing that lets a step be skipped.
  *
- * @param {{ lessonId: string, onDone: () => void, doneLabel?: string }} props
+ * @param {{ lessonId: string, onDone: (result?: { xpAwarded?: number, reread?: boolean }) => void,
+ *           doneLabel?: string }} props
  */
 export function LessonScreen({ lessonId, onDone, doneLabel }) {
   const [data, setData] = useState(/** @type {any} */ (null));
@@ -43,7 +44,10 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
       .then(d => {
         if (cancelled) return;
         setData(d);
-        setPracticeDone(!!d.practice?.done);
+        // A replay starts the guided fix fresh. Taking "done" from the server
+        // hid the Check button, so a filed lesson could be read but never
+        // practised again.
+        setPracticeDone(!d.completed && !!d.practice?.done);
         if (d.completed) setReached(STEPS.length - 1);
         openedAt.current = Date.now();
       })
@@ -70,8 +74,8 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
     setBusy(true);
     setError(null);
     try {
-      await api.completeLesson(lesson.id, Date.now() - openedAt.current);
-      onDone();
+      const result = await api.completeLesson(lesson.id, Date.now() - openedAt.current);
+      onDone(result);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -84,7 +88,7 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
       <Window
         as="h1"
         title={`Briefing file · ${lesson.title}`}
-        badge={<span className="label">{completed ? "filed · reread" : "required before your first ticket"}</span>}
+        badge={<span className="label">{completed ? "filed · replay" : "required before your first ticket"}</span>}
       >
         <div className="lesson__head">
           <Portrait name={lesson.from} />
@@ -110,6 +114,21 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
       {step === 0 && (
         <Window title="Theory">
           <div className="theory">
+            {/* Every technical word defined before it is used: the lessons are
+                for people who have never written code. */}
+            {lesson.keyTerms?.length > 0 && (
+              <section className="terms" aria-labelledby="terms-heading">
+                <h3 id="terms-heading" className="terms__heading">Words to know</h3>
+                <dl className="terms__list">
+                  {lesson.keyTerms.map(t => (
+                    <div key={t.term} className="terms__item">
+                      <dt>{t.term}</dt>
+                      <dd>{t.meaning}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            )}
             {lesson.theory.map(section => (
               <section key={section.heading} className="theory__section">
                 <h3 className="theory__heading">{section.heading}</h3>
@@ -117,6 +136,9 @@ export function LessonScreen({ lessonId, onDone, doneLabel }) {
                 {section.code && <pre className="theory__code">{section.code}</pre>}
               </section>
             ))}
+            {lesson.takeaway && (
+              <p className="takeaway"><strong>Remember this:</strong> {lesson.takeaway}</p>
+            )}
           </div>
           <Next onClick={() => go(1)}>See it happen</Next>
         </Window>

@@ -6,9 +6,14 @@ import { LESSONS, lessonById } from "../../../../content/lessons.js";
 import { fingerprint } from "../attempt-logic.js";
 import { append as defaultAppend, lessonsCompleted as defaultLessonsCompleted,
          lessonPractice as defaultLessonPractice } from "../telemetry.js";
-import { Event } from "../models/index.js";
+import { Event, Progress } from "../models/index.js";
 
 const MAX_SUBMISSION_BYTES = 20_000;
+/**
+ * XP for finishing a lesson the first time. The same for every lesson, so no
+ * skill's briefing is worth more than another's; nothing for a replay.
+ */
+export const LESSON_XP = 50;
 /** Failed tries at the guided fix before "show me" is offered. */
 const REVEAL_AFTER = 2;
 
@@ -29,7 +34,8 @@ const REVEAL_AFTER = 2;
  *   append?: typeof defaultAppend,
  *   loadLessonsDone?: (subjectId: string) => Promise<string[]>,
  *   loadPractice?: (subjectId: string, lessonId: string) => Promise<{ attempts: number, done: boolean }>,
- *   loadChecked?: (subjectId: string, lessonId: string) => Promise<string[]>
+ *   loadChecked?: (subjectId: string, lessonId: string) => Promise<string[]>,
+ *   addXp?: (subjectId: string, amount: number) => Promise<number>
  * }} [deps]
  */
 export function createLessonsRouter(deps = {}) {
@@ -38,6 +44,7 @@ export function createLessonsRouter(deps = {}) {
   const loadLessonsDone = deps.loadLessonsDone ?? defaultLessonsCompleted;
   const loadPractice = deps.loadPractice ?? defaultLessonPractice;
   const loadChecked = deps.loadChecked ?? defaultLoadChecked;
+  const addXp = deps.addXp ?? defaultAddXp;
 
   /** @param {any} req @param {string} type @param {Record<string, any>} payload */
   const record = (req, type, payload) => {
@@ -213,7 +220,16 @@ export function createLessonsRouter(deps = {}) {
 
       const durationMs = Number(req.body?.durationMs) || 0;
       await record(req, "lesson.completed", { lessonId: lesson.id, skill: lesson.skill, durationMs, reread });
-      res.json({ completed: true, reread });
+
+      // Paid once, after the completion is in the log: a replay earns nothing,
+      // so lessons cannot be farmed for XP.
+      let xpAwarded = 0;
+      if (!reread) {
+        const runningTotal = await addXp(subjectId, LESSON_XP);
+        await record(req, "xp.awarded", { amount: LESSON_XP, reason: "lesson", lessonId: lesson.id, runningTotal });
+        xpAwarded = LESSON_XP;
+      }
+      res.json({ completed: true, reread, xpAwarded });
     } catch (err) {
       next(err);
     }
@@ -235,11 +251,23 @@ export function publicLesson(lesson) {
     title: lesson.title,
     from: lesson.from,
     opener: lesson.opener,
+    keyTerms: lesson.keyTerms,
     theory: lesson.theory,
+    takeaway: lesson.takeaway,
     demo: lesson.demo,
     guided,
     check: lesson.check.map(q => ({ id: q.id, question: q.question, options: q.options }))
   };
+}
+
+/** Adds to the progress projection and returns the new total. */
+async function defaultAddXp(subjectId, amount) {
+  const doc = await Progress.findOneAndUpdate(
+    { subjectId },
+    { $inc: { xp: amount }, $set: { updatedAt: new Date() } },
+    { upsert: true, new: true }
+  ).lean();
+  return /** @type {any} */ (doc)?.xp ?? amount;
 }
 
 /** Question ids this learner has answered for a lesson, at least once. */

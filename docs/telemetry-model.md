@@ -60,7 +60,7 @@ events remain interpretable rather than silently mis-parsed.
 | `challenge.completed` | Challenge passes validation | `totalAttempts`, `hintsUsed`, `totalDurationMs`, `xpAwarded` |
 | `challenge.abandoned` | **Not emitted.** Derivable from the log (a start with no completion before the session's last event), though the analysis does not currently report it | — |
 | `hint.requested` | Learner requests a hint | `hintLevel` (1–3), `attemptNo` |
-| `xp.awarded` | XP granted | `amount`, `reason`, `runningTotal` |
+| `xp.awarded` | XP granted for a ticket, or for a first-time lesson (`reason: "lesson"`, with `lessonId`) | `amount`, `reason`, `runningTotal` |
 | `badge.earned` | Badge unlocked | `badgeId`, `skill` |
 | `mastery.updated` | **Not emitted.** Mastery is recomputed from the observations on every request, so storing it would be a second copy that could drift | — |
 | `recommendation.served` | Adaptive engine picks next challenge | `challengeId`, `pMastery`, `policy`, `reason` |

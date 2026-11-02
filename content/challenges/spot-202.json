@@ -27,5 +27,5 @@
     "safeBody is computed. Is it used?",
     "Read the template on the innerHTML line slowly. One of the two values is the raw one."
   ],
-  "xp": { "firstAttempt": 45, "withHints": 20, "retry": 15 }
+  "xp": { "firstAttempt": 45, "withHints": 22, "retry": 15 }
 }

@@ -5,6 +5,7 @@ import { Portrait } from "./components/Portrait.jsx";
 import { DiffView } from "./components/DiffView.jsx";
 import { PostureGauge } from "./components/PostureGauge.jsx";
 import { LessonScreen } from "./LessonScreen.jsx";
+import { BreakScreen, ThanksScreen } from "./Interludes.jsx";
 import { play } from "./sound.js";
 import { api } from "./api.js";
 import "./ChallengeScreen.css";
@@ -21,7 +22,8 @@ import "./ChallengeScreen.css";
  * without breaking the feature is the whole puzzle, and separating them across
  * screens would hide the tension that makes it one.
  */
-export function ChallengeScreen() {
+/** @param {{ onLeave?: () => void }} [props] */
+export function ChallengeScreen({ onLeave } = {}) {
   const [challenge, setChallenge] = useState(/** @type {Challenge|null} */ (null));
   const [reason, setReason] = useState("");
   const [mastery, setMastery] = useState(/** @type {Record<string, number>} */ ({}));
@@ -33,7 +35,15 @@ export function ChallengeScreen() {
   const [decision, setDecision] = useState(/** @type {"approve"|"reject"|null} */ (null));
   const [rejectReason, setRejectReason] = useState(/** @type {string|null} */ (null));
   const [error, setError] = useState(/** @type {string|null} */ (null));
-  const [briefing, setBriefing] = useState(/** @type {{ lessonId: string, next: any }|null} */ (null));
+  /**
+   * The lesson flow ahead of a skill's first ticket: an optional break, the
+   * lesson, then (after the last lesson) a thank-you, then the ticket.
+   *
+   * @type {[{ stage: "break"|"lesson"|"thanks", lessonId: string, next: any,
+   *           filed: { title: string }[], total: number }|null, Function]}
+   */
+  const [briefing, setBriefing] = useState(/** @type {any} */ (null));
+  const [filedNote, setFiledNote] = useState(/** @type {string|null} */ (null));
   const openedAt = useRef(Date.now());
 
   /**
@@ -48,7 +58,15 @@ export function ChallengeScreen() {
     const next = await api.next();
     if (isCancelled() || !next.challenge) return;
     if (next.lesson) {
-      setBriefing({ lessonId: next.lesson.id, next });
+      // A break before every lesson but the first: the first follows the
+      // welcome, which is pause enough.
+      const { lessons } = await api.lessons().catch(() => ({ lessons: [] }));
+      if (isCancelled()) return;
+      const filed = lessons.filter(l => l.completed).map(l => ({ title: l.title }));
+      setBriefing({
+        stage: filed.length ? "break" : "lesson",
+        lessonId: next.lesson.id, next, filed, total: lessons.length || 3
+      });
       return;
     }
     await open(next, isCancelled);
@@ -111,6 +129,7 @@ export function ChallengeScreen() {
   /** Reset for whatever the adaptive layer serves next, without a page reload. */
   async function nextAssignment() {
     setVerdict(null);
+    setFiledNote(null);
     setPicked([]);
     setDecision(null);
     setRejectReason(null);
@@ -131,15 +150,45 @@ export function ChallengeScreen() {
     }
   }
 
+  async function toTicket(next) {
+    setBriefing(null);
+    await open(next);
+    window.scrollTo({ top: 0 });
+  }
+
+  if (briefing?.stage === "break") {
+    return (
+      <BreakScreen
+        filed={briefing.filed}
+        upcoming={briefing.next.lesson}
+        total={briefing.total}
+        onStart={() => setBriefing({ ...briefing, stage: "lesson" })}
+        onLeave={onLeave}
+      />
+    );
+  }
+
+  if (briefing?.stage === "thanks") {
+    return <ThanksScreen onContinue={() => toTicket(briefing.next)} onLeave={onLeave} />;
+  }
+
   if (briefing) {
     return (
       <LessonScreen
         lessonId={briefing.lessonId}
-        onDone={async () => {
-          const { next } = briefing;
-          setBriefing(null);
-          await open(next);
-          window.scrollTo({ top: 0 });
+        onDone={async (/** @type {{ xpAwarded?: number, reread?: boolean }} */ result = {}) => {
+          const filedNow = briefing.filed.length + (result.reread ? 0 : 1);
+          setFiledNote(result.xpAwarded
+            ? `Briefing filed in the field manual · +${result.xpAwarded} XP`
+            : "Briefing filed in the field manual");
+          // After the last lesson, the author's thank-you -- but never to a
+          // study participant, for whom it would read as the end of the session.
+          if (filedNow >= briefing.total && !api.isStudyParticipant()) {
+            setBriefing({ ...briefing, stage: "thanks" });
+            window.scrollTo({ top: 0 });
+            return;
+          }
+          await toTicket(briefing.next);
         }}
       />
     );
@@ -166,6 +215,7 @@ export function ChallengeScreen() {
   return (
     <div className="screen">
       <p className="visually-hidden" aria-live="polite">{announcement}</p>
+      {filedNote && <p className="filed-note" role="status">{filedNote}</p>}
       <Window
         as="span"
         title={`Ticket ${challenge.id.toUpperCase()}`}
